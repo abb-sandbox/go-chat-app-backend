@@ -304,7 +304,7 @@ func (h *AuthHandler) me(c *gin.Context) {
 // @ Description Endpoint for checing health
 // @ Success 200 {object} map[string]string "message: string"
 // @ Router /health [get]
-func health(c *gin.Context) {
+func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy"})
 
 }

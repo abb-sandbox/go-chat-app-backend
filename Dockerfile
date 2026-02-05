@@ -10,10 +10,8 @@ RUN go mod download
 
 COPY . .
 
-# Run Air and tell it exactly where your main file is
-# We use flags to avoid needing an air.toml file
+# Inside your Dockerfile
 ENTRYPOINT ["air", \
-    "--build.cmd", "go build -o /tmp/main ./cmd/main.go", \
-    "--build.bin", "/tmp/main", \
-    "--build.include_ext", "go,env", \
+    "--build.cmd", "go build -o ./tmp/main ./cmd/main.go", \
+    "--build.entrypoint", "./tmp/main", \
     "--build.stop_on_error", "false"]

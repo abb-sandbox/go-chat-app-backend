@@ -79,7 +79,7 @@ func main() {
 	if port == "" {
 		port = "8000" // Default for local
 	}
-	srv := &http.Server{Addr: ":" + port, Handler: r}
+	srv := &http.Server{Addr: "0.0.0.0:" + port, Handler: r}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			lg.Error(err, "http server stopped")

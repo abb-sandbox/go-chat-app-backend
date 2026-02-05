@@ -1,0 +1,140 @@
+package jwt
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"time"
+
+	"github.com/AzimBB/go-chat-app-backend/internal/config"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+}
+
+type JWTService struct {
+	secret   []byte
+	shortTTL time.Duration
+	longTTL  time.Duration
+}
+
+// New returns a configured JWTService implementation.
+func New(cfg config.Config) adapters.JWTService {
+	return &JWTService{
+		secret:   []byte(cfg.JWT_SECRET),
+		shortTTL: cfg.JWT_SHORT,
+		longTTL:  cfg.JWT_LONG,
+	}
+}
+
+func (j *JWTService) GenerateActivationLink(ctx context.Context) string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// GenerateTokenPair is FIXED: Uses the SAME Session ID (JTI) for both tokens.
+func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (string, string, error) {
+	// 1. Generate the Session ID (JTI) once
+	sessionID := newJTI()
+
+	// --- Access Token Claims ---
+	claimsAcc := UserClaims{
+		// 2. Use the shared Session ID (JTI)
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        sessionID,
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsAcc)
+	signedAcc, err := at.SignedString(j.secret)
+	if err != nil {
+		return "", "", err
+	}
+
+	// --- Refresh Token Claims ---
+	claimsRef := jwt.RegisteredClaims{
+		// 3. Use the SAME shared Session ID (JTI)
+		ID:        sessionID,
+		Subject:   userID,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.longTTL)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	}
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRef)
+	signedRef, err := rt.SignedString(j.secret)
+	if err != nil {
+		return "", "", err
+	}
+
+	return signedAcc, signedRef, nil
+}
+
+// CreateSession is CORRECT after fixing GenerateTokenPair.
+func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshToken, userAgent, clientIP string) (entity.Session, error) {
+	// sessionID (JTI) is now unified.
+	sessionID, parsedUserID, err := j.ValidateRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return entity.Session{}, err
+	}
+	if parsedUserID != userID {
+		return entity.Session{}, errors.New("mismatched userID in refresh token")
+	}
+
+	expiresAt := time.Now().Add(j.longTTL)
+	session := entity.Session{
+		ID:           sessionID, // Correctly using the unified JTI (sessionID)
+		UserID:       userID,
+		RefreshToken: refreshToken,
+		ExpiresAt:    expiresAt,
+		UserAgent:    userAgent,
+		ClientIP:     clientIP,
+	}
+	return session, nil
+}
+
+func (j *JWTService) ValidateRefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return j.secret, nil
+	})
+	if err != nil {
+		return "", "", err
+	}
+	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	if !ok || !token.Valid {
+		return "", "", errors.New("invalid refresh token")
+	}
+	userID := claims.Subject
+
+	return claims.ID, userID, nil
+}
+
+func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string) (string, string, error) {
+	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return j.secret, nil
+	})
+	if err != nil {
+		return "", "", err
+	}
+	claims, ok := token.Claims.(*UserClaims)
+	if !ok || !token.Valid {
+		return "", "", errors.New("invalid access token")
+	}
+	// REMOVED: fmt.Println(claims) is debug code and should not be in production.
+
+	userID := claims.Subject
+
+	return claims.ID, userID, nil
+}
+
+func newJTI() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
+}

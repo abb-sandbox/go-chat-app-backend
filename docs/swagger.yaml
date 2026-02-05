@@ -1,0 +1,144 @@
+definitions:
+  handlers.loginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handlers.registerRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+info:
+  contact: {}
+  description: Backend API for Flutter Chat App.
+  title: Go Chat App API
+  version: "1.0"
+paths:
+  /auth/activate/{link}/{code}:
+    post:
+      description: Activates a user via email link and random 6-digit code
+      parameters:
+      - description: Activation Link UUID
+        in: path
+        name: link
+        required: true
+        type: string
+      - description: 6-digit Verification Code
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "200":
+          description: 'message: success'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate user account
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and sets HttpOnly cookies for Access and Refresh
+        tokens
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Login successful'
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'message: Invalid credentials'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login user
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: Returns the UID of the currently logged-in user from the session
+      responses:
+        "200":
+          description: 'user_id: string'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get current user info
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account with hashed password
+      parameters:
+      - description: Registration Info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 'message: registered'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+securityDefinitions:
+  CookieAuth:
+    in: cookie
+    name: access_token
+    type: apiKey
+swagger: "2.0"

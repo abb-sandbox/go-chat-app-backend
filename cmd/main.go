@@ -73,7 +73,11 @@ func main() {
 	h.RegisterRoutes(api_v1, jwtSvc, cache)
 
 	// Run server with graceful shutdown
-	srv := &http.Server{Addr: ":8000", Handler: r}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000" // Default for local
+	}
+	srv := &http.Server{Addr: ":" + port, Handler: r}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			lg.Error(err, "http server stopped")

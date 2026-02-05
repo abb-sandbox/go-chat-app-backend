@@ -64,6 +64,8 @@ func main() {
 	r := gin.Default()
 	// Health check for local dev and readiness
 	r.GET("/health", handlers.Health)
+
+	r.GET("/", handlers.Health)
 	api_v1 := r.Group("/api/v1")
 	api_v1.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "time": time.Now().Format(time.RFC3339)})

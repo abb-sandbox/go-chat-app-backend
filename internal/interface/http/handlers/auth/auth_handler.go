@@ -299,3 +299,12 @@ func (h *AuthHandler) me(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"user_id": uid})
 }
+
+// @ Summary Endpoint for checing health
+// @ Description Endpoint for checing health
+// @ Success 200 {object} map[string]string "message: string"
+// @ Router /health [get]
+func health(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "healthy"})
+
+}

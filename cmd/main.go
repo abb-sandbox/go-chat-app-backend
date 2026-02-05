@@ -63,6 +63,7 @@ func main() {
 
 	r := gin.Default()
 	// Health check for local dev and readiness
+	r.GET("/health")
 	api_v1 := r.Group("/api/v1")
 	api_v1.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "time": time.Now().Format(time.RFC3339)})
@@ -72,7 +73,7 @@ func main() {
 	h.RegisterRoutes(api_v1, jwtSvc, cache)
 
 	// Run server with graceful shutdown
-	srv := &http.Server{Addr: ":8080", Handler: r}
+	srv := &http.Server{Addr: ":8000", Handler: r}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			lg.Error(err, "http server stopped")

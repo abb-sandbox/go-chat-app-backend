@@ -27,7 +27,7 @@ type RedisCache struct {
 	client *redislib.Client
 }
 
-// NewRedisClient creates and validates a Redis client with sane defaults.
+// NewRedisClient creates and validates a Redis client with exponential backoff retries.
 func NewRedisClient(cfg config.Config) (*redislib.Client, error) {
 	if cfg.REDIS_URL == "" {
 		return nil, errors.New("redis address is empty")
@@ -40,15 +40,30 @@ func NewRedisClient(cfg config.Config) (*redislib.Client, error) {
 
 	client := redislib.NewClient(opt)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	// --- Retry Logic Start ---
+	maxRetries := 5
+	initialDelay := 1 * time.Second
 
-	if err := client.Ping(ctx).Err(); err != nil {
-		_ = client.Close()
-		return nil, err
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+		lastErr = client.Ping(ctx).Err()
+		cancel() // Cancel context immediately after Ping
+
+		if lastErr == nil {
+			return client, nil
+		}
+
+		// Exponential backoff: 1s, 2s, 4s, 8s...
+		wait := initialDelay * time.Duration(1<<i)
+
+		time.Sleep(wait)
 	}
+	// --- Retry Logic End ---
 
-	return client, nil
+	_ = client.Close()
+	return nil, fmt.Errorf("could not connect to Redis after %d attempts: %w", maxRetries, lastErr)
 }
 
 func NewCache(client *redislib.Client) adapters.Cache {

@@ -305,6 +305,5 @@ func (h *AuthHandler) me(c *gin.Context) {
 // @ Success 200 {object} map[string]string "message: string"
 // @ Router /health [get]
 func Health(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "healthy"})
-
+	c.JSON(200, gin.H{"message": "healthy and strong"})
 }

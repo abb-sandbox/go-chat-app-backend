@@ -9,18 +9,41 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewPool constructs a pgxpool.Pool to be used by repositories.
 func NewPool(cfg config.Config) (*pgxpool.Pool, error) {
 	if cfg.PG_URL == "" {
 		return nil, fmt.Errorf("no postgres dsn provided")
 	}
-	pool, err := pgxpool.New(context.Background(), cfg.PG_URL)
+
+	// 1. Parse the config string into a Config struct
+	poolConfig, err := pgxpool.ParseConfig(cfg.PG_URL)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse DATABASE_URL: %w", err)
+	}
+
+	// 2. Set sensible defaults
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnLifetime = time.Hour
+
+	// 3. Create the pool
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {
 		return nil, err
 	}
-	// Set sensible defaults; these can be replaced by config in future
-	pool.Config().MaxConns = 10
-	pool.Config().MinConns = 1
-	pool.Config().MaxConnLifetime = time.Hour
-	return pool, nil
+
+	// 4. ACTIVE PING WITH RETRY (The missing piece)
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = pool.Ping(ctx)
+		cancel()
+
+		if err == nil {
+			return pool, nil // Success!
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+
+	return nil, fmt.Errorf("postgres unreachable after %d attempts: %w", maxRetries, err)
 }

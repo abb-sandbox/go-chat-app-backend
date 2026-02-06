@@ -38,7 +38,9 @@ type Config struct {
 }
 
 func GetConfig() Config {
-	_ = godotenv.Load()
+	if value := os.Getenv("LOCAL"); value == "true" {
+		_ = godotenv.Load()
+	}
 	return Config{
 		// --- Application/Framework Settings ---
 		GIN_MODE: GetStringEnv("GIN_MODE", "debug"),

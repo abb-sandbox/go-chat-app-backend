@@ -9,6 +9,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+EXPOSE 8000
 ENTRYPOINT ["air", \
     "--build.cmd", "go build -o ./tmp/main ./cmd/main.go", \
     "--build.bin", "./tmp/main", \

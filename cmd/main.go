@@ -28,7 +28,7 @@ import (
 func main() {
 	cfg := config.GetConfig()
 	lg := logger.NewZapLogger(cfg.LOG_LVL, cfg.DEV)
-	lg.Info("Postgres dsn", cfg.PG_URL)s
+	lg.Info("Postgres dsn", cfg.PG_URL)
 
 	// Initialize DB
 	pool, err := postgres.NewPool(cfg)

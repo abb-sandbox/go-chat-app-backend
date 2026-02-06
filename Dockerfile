@@ -2,16 +2,14 @@ FROM golang:1.25.5-alpine
 
 WORKDIR /app
 
-# Install Air for hot reloading
+FROM golang:1.25.5-alpine
+RUN apk add --no-cache git build-base
 RUN go install github.com/air-verse/air@latest
-
+WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
-
-# Inside your Dockerfile
 ENTRYPOINT ["air", \
     "--build.cmd", "go build -o ./tmp/main ./cmd/main.go", \
-    "--build.entrypoint", "./tmp/main", \
+    "--build.bin", "./tmp/main", \
     "--build.stop_on_error", "false"]

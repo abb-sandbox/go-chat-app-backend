@@ -38,7 +38,7 @@ type Config struct {
 }
 
 func GetConfig() Config {
-	if value := os.Getenv("LOCAL"); value == "true" {
+	if value := os.Getenv("CLOUD"); value == "false" {
 		_ = godotenv.Load()
 	}
 	return Config{

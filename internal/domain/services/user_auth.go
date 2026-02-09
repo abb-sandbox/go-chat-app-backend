@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 )
 
 // UserAuthService is responsible for auth procedures of user
@@ -11,7 +11,7 @@ type UserAuthService interface {
 	// ===Complete Registration logic ===
 
 	// Register Initiating registration
-	Register(ctx context.Context, user entity.User) error
+	Register(ctx context.Context, user entities.User) error
 	// ActivateUser Completing registration
 	ActivateUser(ctx context.Context, link string) error
 	// ==================================

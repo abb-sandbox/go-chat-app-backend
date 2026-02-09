@@ -1,4 +1,4 @@
-package usecase
+package usecases
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters/repositories"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/services"
 
@@ -35,7 +35,7 @@ func AuthService(
 	}
 }
 
-func (s *UserAuthServiceImpl) Register(ctx context.Context, user entity.User) error {
+func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) error {
 	err := s.UserRepository.CheckEmailExistence(ctx, user.Email)
 	if errors.Is(app_errors.ErrUserAlreadyExists, err) {
 		s.Logger.Info(err.Error(), "email", user.Email)

@@ -14,8 +14,8 @@ import (
 	"github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infrapostgres "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infraredis "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/redis"
-	handlers "github.com/AzimBB/go-chat-app-backend/internal/interface/http/handlers/auth"
-	usecase "github.com/AzimBB/go-chat-app-backend/internal/usecase"
+	handlers "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/handlers/auth"
+	"github.com/AzimBB/go-chat-app-backend/internal/usecases"
 	"github.com/gin-gonic/gin"
 )
 
@@ -53,7 +53,7 @@ func main() {
 
 	jwtSvc := infrajwt.New(cfg)
 
-	authService := &usecase.UserAuthServiceImpl{
+	authService := &usecases.UserAuthServiceImpl{
 		UserRepository:       userRepo,
 		JWTService:           jwtSvc,
 		Cache:                cache,

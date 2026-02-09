@@ -8,10 +8,10 @@ import (
 	_ "github.com/AzimBB/go-chat-app-backend/docs"
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/services"
-	"github.com/AzimBB/go-chat-app-backend/internal/interface/http/middleware"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	gs "github.com/swaggo/gin-swagger"
@@ -105,7 +105,7 @@ func (h *AuthHandler) register(c *gin.Context) {
 		return
 	}
 
-	user := entity.User{
+	user := entities.User{
 		Email:        req.Email,
 		PasswordHash: passwordHash,
 	}

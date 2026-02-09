@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters/repositories"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -48,7 +48,7 @@ func (p *PostgresUserRepository) CheckEmailExistence(ctx context.Context, email 
 	return err
 }
 
-func (p *PostgresUserRepository) Create(ctx context.Context, user *entity.User) error {
+func (p *PostgresUserRepository) Create(ctx context.Context, user *entities.User) error {
 	sb := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	query, args, err := sb.

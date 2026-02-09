@@ -9,7 +9,7 @@ import (
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	redislib "github.com/redis/go-redis/v9"
 )
 
@@ -71,7 +71,7 @@ func NewCache(client *redislib.Client) adapters.Cache {
 }
 
 // SaveUserInCache stores a user with a TTL.
-func (r *RedisCache) SaveUserInCache(ctx context.Context, key string, user entity.User, duration time.Duration) error {
+func (r *RedisCache) SaveUserInCache(ctx context.Context, key string, user entities.User, duration time.Duration) error {
 	if key == "" {
 		return errors.New("empty cache key")
 	}
@@ -88,22 +88,22 @@ func (r *RedisCache) SaveUserInCache(ctx context.Context, key string, user entit
 }
 
 // GetUserFromCache returns ErrCacheMiss if the key does not exist.
-func (r *RedisCache) GetUserFromCache(ctx context.Context, key string) (entity.User, error) {
+func (r *RedisCache) GetUserFromCache(ctx context.Context, key string) (entities.User, error) {
 	if key == "" {
-		return entity.User{}, errors.New("empty cache key")
+		return entities.User{}, errors.New("empty cache key")
 	}
 
 	v, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redislib.Nil) {
-			return entity.User{}, ErrCacheMiss
+			return entities.User{}, ErrCacheMiss
 		}
-		return entity.User{}, err
+		return entities.User{}, err
 	}
 
-	var user entity.User
+	var user entities.User
 	if err := json.Unmarshal([]byte(v), &user); err != nil {
-		return entity.User{}, fmt.Errorf("unmarshal user: %w", err)
+		return entities.User{}, fmt.Errorf("unmarshal user: %w", err)
 	}
 
 	return user, nil
@@ -117,7 +117,7 @@ func (r *RedisCache) RemoveFromCacheByKey(ctx context.Context, key string) error
 }
 
 // SaveSession stores a session until its expiration time.
-func (r *RedisCache) SaveSession(ctx context.Context, session entity.Session) error {
+func (r *RedisCache) SaveSession(ctx context.Context, session entities.Session) error {
 	if session.ID == "" {
 		return errors.New("empty session id")
 	}
@@ -136,22 +136,22 @@ func (r *RedisCache) SaveSession(ctx context.Context, session entity.Session) er
 }
 
 // GetSessionByID returns ErrCacheMiss if the session does not exist.
-func (r *RedisCache) GetSessionByID(ctx context.Context, id string) (entity.Session, error) {
+func (r *RedisCache) GetSessionByID(ctx context.Context, id string) (entities.Session, error) {
 	if id == "" {
-		return entity.Session{}, errors.New("empty session id")
+		return entities.Session{}, errors.New("empty session id")
 	}
 
 	v, err := r.client.Get(ctx, id).Result()
 	if err != nil {
 		if errors.Is(err, redislib.Nil) {
-			return entity.Session{}, ErrCacheMiss
+			return entities.Session{}, ErrCacheMiss
 		}
-		return entity.Session{}, err
+		return entities.Session{}, err
 	}
 
-	var session entity.Session
+	var session entities.Session
 	if err := json.Unmarshal([]byte(v), &session); err != nil {
-		return entity.Session{}, fmt.Errorf("unmarshal session: %w", err)
+		return entities.Session{}, fmt.Errorf("unmarshal session: %w", err)
 	}
 
 	return session, nil

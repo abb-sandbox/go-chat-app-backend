@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -24,7 +23,7 @@ type JWTService struct {
 }
 
 // New returns a configured JWTService implementation.
-func New(cfg config.Config) adapters.JWTService {
+func New(cfg config.Config) *JWTService {
 	return &JWTService{
 		secret:   []byte(cfg.JWT_SECRET),
 		shortTTL: cfg.JWT_SHORT,
@@ -77,18 +76,18 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 }
 
 // CreateSession is CORRECT after fixing GenerateTokenPair.
-func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshToken, userAgent, clientIP string) (entity.Session, error) {
+func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshToken, userAgent, clientIP string) (entities.Session, error) {
 	// sessionID (JTI) is now unified.
 	sessionID, parsedUserID, err := j.ValidateRefreshToken(ctx, refreshToken)
 	if err != nil {
-		return entity.Session{}, err
+		return entities.Session{}, err
 	}
 	if parsedUserID != userID {
-		return entity.Session{}, errors.New("mismatched userID in refresh token")
+		return entities.Session{}, errors.New("mismatched userID in refresh token")
 	}
 
 	expiresAt := time.Now().Add(j.longTTL)
-	session := entity.Session{
+	session := entities.Session{
 		ID:           sessionID, // Correctly using the unified JTI (sessionID)
 		UserID:       userID,
 		RefreshToken: refreshToken,

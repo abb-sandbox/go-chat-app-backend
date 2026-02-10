@@ -14,8 +14,9 @@ import (
 	"github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infrapostgres "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infraredis "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/redis"
-	handlers "github.com/AzimBB/go-chat-app-backend/internal/interface/http/handlers/auth"
-	usecase "github.com/AzimBB/go-chat-app-backend/internal/usecase"
+	handlers "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/handlers/auth"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
+	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -27,7 +28,7 @@ import (
 // @name						access_token
 func main() {
 	cfg := config.GetConfig()
-	lg := logger.NewZapLogger(cfg.LOG_LVL, cfg.DEV)
+	var lg usecases.Logger = logger.NewZapLogger(cfg.LOG_LVL, cfg.DEV)
 	lg.Info("Postgres dsn", cfg.PG_URL)
 
 	// Initialize DB
@@ -53,7 +54,7 @@ func main() {
 
 	jwtSvc := infrajwt.New(cfg)
 
-	authService := &usecase.UserAuthServiceImpl{
+	authService := &usecases.UserAuthServiceImpl{
 		UserRepository:       userRepo,
 		JWTService:           jwtSvc,
 		Cache:                cache,
@@ -73,7 +74,7 @@ func main() {
 	})
 	// Register auth routes
 	h := handlers.NewAuthHandler(authService, lg, cfg)
-	h.RegisterRoutes(api_v1, jwtSvc, cache)
+	h.RegisterRoutes(api_v1, middleware.AuthMiddleware(jwtSvc, cache, lg))
 
 	// Run server with graceful shutdown
 	port := os.Getenv("PORT")

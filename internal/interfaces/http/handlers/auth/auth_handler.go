@@ -7,11 +7,10 @@ import (
 
 	_ "github.com/AzimBB/go-chat-app-backend/docs"
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/services"
-	"github.com/AzimBB/go-chat-app-backend/internal/interface/http/middleware"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
+	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	gs "github.com/swaggo/gin-swagger"
@@ -19,13 +18,13 @@ import (
 )
 
 type AuthHandler struct {
-	Service services.UserAuthService
-	Logger  adapters.Logger
+	Service UserAuthService
+	Logger  usecases.Logger
 	cfg     config.Config
 }
 
-func NewAuthHandler(s services.UserAuthService, l adapters.Logger, c config.Config) *AuthHandler {
-	return &AuthHandler{Service: s, Logger: l, cfg: c}
+func NewAuthHandler(s UserAuthService, l usecases.Logger, c config.Config) *AuthHandler {
+	return &AuthHandler{Service: s, cfg: c}
 }
 
 const (
@@ -53,16 +52,16 @@ type registerRequest struct {
 }
 
 // RegisterRoutes attaches endpoints
-func (h *AuthHandler) RegisterRoutes(r *gin.RouterGroup, jwt adapters.JWTService, redis adapters.Cache) {
+func (h *AuthHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	// Register public routes and protected routes so callers can opt-in to register them separately
 	h.RegisterPublicRoutes(r)
-	h.RegisterProtectedRoutes(r, jwt, redis)
+	h.RegisterProtectedRoutes(r, authMiddleware)
 }
 
 // RouteModule provides a modular interface for registering route groups
 type RouteModule interface {
 	RegisterPublicRoutes(r *gin.RouterGroup)
-	RegisterProtectedRoutes(r *gin.RouterGroup, jwt adapters.JWTService, redis adapters.Cache)
+	RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc)
 }
 
 // RegisterPublicRoutes registers routes that are publicly accessible (no auth required)
@@ -76,9 +75,9 @@ func (h *AuthHandler) RegisterPublicRoutes(r *gin.RouterGroup) {
 }
 
 // RegisterProtectedRoutes registers routes that require authentication
-func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, jwt adapters.JWTService, redis adapters.Cache) {
+func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	auth := r.Group("/auth")
-	auth.Use(middleware.AuthMiddleware(jwt, redis, h.Logger))
+	auth.Use(authMiddleware)
 	auth.POST("/logout", h.logout)
 	auth.GET("/me", h.me)
 }
@@ -105,7 +104,7 @@ func (h *AuthHandler) register(c *gin.Context) {
 		return
 	}
 
-	user := entity.User{
+	user := entities.User{
 		Email:        req.Email,
 		PasswordHash: passwordHash,
 	}

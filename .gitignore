@@ -6,7 +6,7 @@
 *.exe~
 *.dll
 *.so
-*.dylib
+*.dylibgit 
 
 # Test binary, built with `go test -c`
 *.test
@@ -35,3 +35,5 @@ tmp/build-errors.log
 coverage
 .gitignore
 .air.toml
+cloud.env
+.gitignore

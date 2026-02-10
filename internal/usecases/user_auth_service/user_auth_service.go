@@ -1,32 +1,28 @@
-package usecase
+package usecases
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters/repositories"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/entity"
+	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/services"
-
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
 )
 
 type UserAuthServiceImpl struct {
-	UserRepository       repositories.UserRepository
-	JWTService           adapters.JWTService
-	Cache                adapters.Cache
-	MailingService       adapters.MailingService
+	UserRepository       UserRepository
+	JWTService           JWTService
+	Cache                Cache
+	MailingService       MailingService
 	ActivationTimeExpiry time.Duration
-	Logger               adapters.Logger
+	Logger               Logger
 }
 
 func AuthService(
-	userRepository repositories.UserRepository,
-	jwtService adapters.JWTService,
-	redisCache adapters.Cache,
-	mailingService adapters.MailingService) services.UserAuthService {
+	userRepository UserRepository,
+	jwtService JWTService,
+	redisCache Cache,
+	mailingService MailingService) *UserAuthServiceImpl {
 	return &UserAuthServiceImpl{
 		UserRepository: userRepository,
 		JWTService:     jwtService,
@@ -35,7 +31,7 @@ func AuthService(
 	}
 }
 
-func (s *UserAuthServiceImpl) Register(ctx context.Context, user entity.User) error {
+func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) error {
 	err := s.UserRepository.CheckEmailExistence(ctx, user.Email)
 	if errors.Is(app_errors.ErrUserAlreadyExists, err) {
 		s.Logger.Info(err.Error(), "email", user.Email)

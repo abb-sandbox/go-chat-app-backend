@@ -50,7 +50,7 @@ func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) 
 		return app_errors.ErrInternalServerError
 	}
 
-	err = s.MailingService.SendActivationCode(ctx, user.Email, newLinkAsKey)
+	err = s.MailingService.SendActivationLink(ctx, user.Email, newLinkAsKey)
 	if err != nil {
 		s.Logger.Error(err, "Method on MailingService", "user", user, "link", newLinkAsKey)
 		return app_errors.ErrInternalServerError

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters/repositories"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	sq "github.com/Masterminds/squirrel"
@@ -19,7 +18,7 @@ type PostgresUserRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewUserRepository(pool *pgxpool.Pool) repositories.UserRepository {
+func NewUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
 	return &PostgresUserRepository{pool: pool}
 }
 

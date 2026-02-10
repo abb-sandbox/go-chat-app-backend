@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	redislib "github.com/redis/go-redis/v9"
 )
@@ -66,7 +65,7 @@ func NewRedisClient(cfg config.Config) (*redislib.Client, error) {
 	return nil, fmt.Errorf("could not connect to Redis after %d attempts: %w", maxRetries, lastErr)
 }
 
-func NewCache(client *redislib.Client) adapters.Cache {
+func NewCache(client *redislib.Client) *RedisCache {
 	return &RedisCache{client: client}
 }
 

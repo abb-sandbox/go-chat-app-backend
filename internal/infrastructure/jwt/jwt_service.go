@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -24,7 +23,7 @@ type JWTService struct {
 }
 
 // New returns a configured JWTService implementation.
-func New(cfg config.Config) adapters.JWTService {
+func New(cfg config.Config) *JWTService {
 	return &JWTService{
 		secret:   []byte(cfg.JWT_SECRET),
 		shortTTL: cfg.JWT_SHORT,

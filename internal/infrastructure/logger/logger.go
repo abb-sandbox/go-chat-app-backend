@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -15,7 +14,7 @@ type ZapLogger struct {
 }
 
 // NewZapLogger creates a new configured ZapLogger instance.
-func NewZapLogger(level string, isDevelopment bool) adapters.Logger {
+func NewZapLogger(level string, isDevelopment bool) *ZapLogger {
 	var config zap.Config
 	if isDevelopment {
 		config = zap.NewDevelopmentConfig()
@@ -70,7 +69,7 @@ func (z *ZapLogger) Error(err error, msg string, fields ...interface{}) {
 	z.log.Error(msg, zapFields...)
 }
 
-func (z *ZapLogger) With(fields ...interface{}) adapters.Logger {
+func (z *ZapLogger) With(fields ...interface{}) *ZapLogger {
 	newLogger := z.log.With(convertToZapFields(fields...)...)
 	return &ZapLogger{log: newLogger}
 }

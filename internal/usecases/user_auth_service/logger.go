@@ -1,4 +1,4 @@
-package adapters
+package usecases
 
 type Logger interface {
 	Debug(msg string, fields ...interface{})
@@ -6,7 +6,4 @@ type Logger interface {
 	Warn(msg string, fields ...interface{})
 
 	Error(err error, msg string, fields ...interface{})
-
-	// With is used to create a new logger instance with pre-defined fields (e.g., for request tracing).
-	With(fields ...interface{}) Logger
 }

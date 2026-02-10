@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AzimBB/go-chat-app-backend/internal/domain/adapters"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
+	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,7 +21,7 @@ const (
 )
 
 // AuthMiddleware is a Gin-compatible middleware performing authentication checks.
-func AuthMiddleware(jwtService adapters.JWTService, redis adapters.Cache, logger adapters.Logger) gin.HandlerFunc {
+func AuthMiddleware(jwtService usecases.JWTService, redis usecases.Cache, logger usecases.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := getToken(c)
 

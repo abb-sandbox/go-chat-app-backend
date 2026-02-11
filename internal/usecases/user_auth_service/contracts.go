@@ -32,7 +32,7 @@ type MailingService interface {
 }
 
 type JWTService interface {
-	GenerateActivationLink(ctx context.Context) (link string)
+	GenerateActivationLink(ctx context.Context) (link string, err error)
 	GenerateTokenPair(ctx context.Context, userID string) (accessToken, refreshToken string, err error)
 	CreateSession(ctx context.Context, userID string, refreshToken, userAgent, ClientIP string) (entities.Session, error)
 	// Validates a refresh token and returns its associated session ID and userID.

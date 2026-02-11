@@ -883,7 +883,7 @@ func (_c *MockJWTService_CreateSession_Call) RunAndReturn(run func(ctx context.C
 }
 
 // GenerateActivationLink provides a mock function for the type MockJWTService
-func (_mock *MockJWTService) GenerateActivationLink(ctx context.Context) string {
+func (_mock *MockJWTService) GenerateActivationLink(ctx context.Context) (string, error) {
 	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
@@ -891,12 +891,21 @@ func (_mock *MockJWTService) GenerateActivationLink(ctx context.Context) string 
 	}
 
 	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (string, error)); ok {
+		return returnFunc(ctx)
+	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context) string); ok {
 		r0 = returnFunc(ctx)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockJWTService_GenerateActivationLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateActivationLink'
@@ -923,12 +932,12 @@ func (_c *MockJWTService_GenerateActivationLink_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockJWTService_GenerateActivationLink_Call) Return(link string) *MockJWTService_GenerateActivationLink_Call {
-	_c.Call.Return(link)
+func (_c *MockJWTService_GenerateActivationLink_Call) Return(link string, err error) *MockJWTService_GenerateActivationLink_Call {
+	_c.Call.Return(link, err)
 	return _c
 }
 
-func (_c *MockJWTService_GenerateActivationLink_Call) RunAndReturn(run func(ctx context.Context) string) *MockJWTService_GenerateActivationLink_Call {
+func (_c *MockJWTService_GenerateActivationLink_Call) RunAndReturn(run func(ctx context.Context) (string, error)) *MockJWTService_GenerateActivationLink_Call {
 	_c.Call.Return(run)
 	return _c
 }

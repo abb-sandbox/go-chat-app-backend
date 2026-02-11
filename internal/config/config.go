@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -108,11 +107,11 @@ func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 
 // Helper function to get an environment variable as an integer.
 // (Retained for completeness, though not currently used by the Config struct)
-func getEnvAsInt(key string, defaultValue int) int {
-	if valueStr, exists := os.LookupEnv(key); exists {
-		if value, err := strconv.Atoi(valueStr); err == nil {
-			return value
-		}
-	}
-	return defaultValue
-}
+// func getEnvAsInt(key string, defaultValue int) int {
+// 	if valueStr, exists := os.LookupEnv(key); exists {
+// 		if value, err := strconv.Atoi(valueStr); err == nil {
+// 			return value
+// 		}
+// 	}
+// 	return defaultValue
+// }

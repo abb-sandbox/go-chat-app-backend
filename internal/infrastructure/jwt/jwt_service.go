@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
@@ -31,16 +32,22 @@ func New(cfg config.Config) *JWTService {
 	}
 }
 
-func (j *JWTService) GenerateActivationLink(ctx context.Context) string {
+func (j *JWTService) GenerateActivationLink(ctx context.Context) (string, error) {
 	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("Error while utilizing GenerateActivationLink : %v ", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // GenerateTokenPair is FIXED: Uses the SAME Session ID (JTI) for both tokens.
 func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (string, string, error) {
 	// 1. Generate the Session ID (JTI) once
-	sessionID := newJTI()
+	sessionID, err := newJTI()
+	if err != nil {
+		return "", "", err
+	}
 
 	// --- Access Token Claims ---
 	claimsAcc := UserClaims{
@@ -132,8 +139,11 @@ func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string
 	return claims.ID, userID, nil
 }
 
-func newJTI() string {
+func newJTI() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("Error while creating new JTI")
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }

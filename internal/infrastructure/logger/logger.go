@@ -75,7 +75,8 @@ func (z *ZapLogger) With(fields ...interface{}) *ZapLogger {
 }
 
 // Sync flushes any buffered log entries (useful before application exit).
-func (z *ZapLogger) Sync() {
+func (z *ZapLogger) Sync() error {
 	// This is optional and often called via defer in main.go
-	z.log.Sync()
+	return z.log.Sync()
+
 }

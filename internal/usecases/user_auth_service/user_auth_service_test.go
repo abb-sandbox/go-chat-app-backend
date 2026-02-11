@@ -73,7 +73,7 @@ func Test_RegisterUser(t *testing.T) {
 			name: "Success: User Registrated succesfully ",
 			setupMocks: func(mocks *UserAuthMocks) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
-				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything)
+				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, nil)
 				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newLinkAsKey, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(nil)
 				mocks.mockMailingService.EXPECT().SendActivationLink(mocks.ctx, mockUser.Email, newLinkAsKey).Return(nil)
 
@@ -92,7 +92,7 @@ func Test_RegisterUser(t *testing.T) {
 			name: "Error:  Internal server error , mailing is down ",
 			setupMocks: func(mocks *UserAuthMocks) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
-				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything)
+				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, nil)
 				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newLinkAsKey, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(nil)
 				mocks.mockMailingService.EXPECT().SendActivationLink(mocks.ctx, mockUser.Email, newLinkAsKey).Return(app_errors.ErrInternalServerError)
 				mocks.mockLogger.EXPECT().Error(mock.Anything, mock.Anything, mock.Anything).Once()
@@ -104,7 +104,7 @@ func Test_RegisterUser(t *testing.T) {
 			name: "Error:  Internal server error , cache is down ",
 			setupMocks: func(mocks *UserAuthMocks) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
-				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything)
+				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, nil)
 				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newLinkAsKey, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(app_errors.ErrInternalServerError)
 				mocks.mockLogger.EXPECT().Error(mock.Anything, mock.Anything, mock.Anything).Once()
 			},

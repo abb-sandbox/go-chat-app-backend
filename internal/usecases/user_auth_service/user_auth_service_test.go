@@ -211,3 +211,107 @@ func Test_ActivateUser(t *testing.T) {
 		}
 	}
 }
+
+func Test_Login(t *testing.T) {
+	var randomUndefinedError error = app_errors.ErrInternalServerError
+
+	LoginTests := []struct {
+		name     string
+		runMocks func(*UserAuthMocks)
+		Error    error
+	}{
+		{
+			name: "Success:  User logged in successfully",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(nil)
+				userAuthMocks.mockUserRepo.EXPECT().GetUserIDByEmail(userAuthMocks.ctx, mock.Anything).Return(mockUser.ID, nil)
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mock.Anything).Return(mock.Anything, mock.Anything, nil)
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.Session{}, nil)
+				userAuthMocks.mockCache.EXPECT().SaveSession(userAuthMocks.ctx, entities.Session{}).Return(nil)
+			},
+			Error: nil,
+		},
+		{
+			name: "Fail:  User logged in successfully",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(app_errors.InvalidCredentials)
+				userAuthMocks.mockLogger.EXPECT().Info(app_errors.InvalidCredentials.Error(), mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			},
+			Error: app_errors.InvalidCredentials,
+		},
+		{
+			name: "Fail:  check password",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  GetUserIDByEmail",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(nil)
+				userAuthMocks.mockUserRepo.EXPECT().GetUserIDByEmail(userAuthMocks.ctx, mock.Anything).Return(mockUser.ID, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything)
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  GenerateTokenPair",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(nil)
+				userAuthMocks.mockUserRepo.EXPECT().GetUserIDByEmail(userAuthMocks.ctx, mock.Anything).Return(mockUser.ID, nil)
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mock.Anything).Return(mock.Anything, mock.Anything, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything)
+
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  CreateSession",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(nil)
+				userAuthMocks.mockUserRepo.EXPECT().GetUserIDByEmail(userAuthMocks.ctx, mock.Anything).Return(mockUser.ID, nil)
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mock.Anything).Return(mock.Anything, mock.Anything, nil)
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.Session{}, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  SaveSession",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockUserRepo.EXPECT().
+					CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(nil)
+				userAuthMocks.mockUserRepo.EXPECT().
+					GetUserIDByEmail(userAuthMocks.ctx, mock.Anything).Return(mockUser.ID, nil)
+				userAuthMocks.mockJWTService.EXPECT().
+					GenerateTokenPair(userAuthMocks.ctx, mock.Anything).Return(mock.Anything, mock.Anything, nil)
+				userAuthMocks.mockJWTService.EXPECT().
+					CreateSession(userAuthMocks.ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(entities.Session{}, nil)
+				userAuthMocks.mockCache.EXPECT().
+					SaveSession(userAuthMocks.ctx, entities.Session{}).Return(randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything)
+
+			},
+			Error: randomUndefinedError,
+		},
+	}
+
+	for _, test := range LoginTests {
+		userAuthMocks := GetNewUserAuthMocks(t)
+
+		test.runMocks(userAuthMocks)
+
+		_, _, err := userAuthMocks.mockUserAuth.Login(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash), mock.Anything, mock.Anything)
+
+		if err == nil {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, test.Error), "Expected: %v  ; but got : %v", test.Error, err)
+		}
+	}
+
+}

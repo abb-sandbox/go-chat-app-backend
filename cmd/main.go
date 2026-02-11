@@ -48,11 +48,11 @@ func main() {
 	defer rClient.Close()
 
 	// Initialize infra services and application
-	userRepo := infrapostgres.NewUserRepository(pool)
-	cache := infraredis.NewCache(rClient)
-	mailer := inframailing.NewNoopMailer()
+	var userRepo usecases.UserRepository = infrapostgres.NewUserRepository(pool)
+	var cache usecases.Cache = infraredis.NewCache(rClient)
+	var mailer usecases.MailingService = inframailing.NewNoopMailer()
 
-	jwtSvc := infrajwt.New(cfg)
+	var jwtSvc usecases.JWTService = infrajwt.New(cfg)
 
 	authService := &usecases.UserAuthServiceImpl{
 		UserRepository:       userRepo,

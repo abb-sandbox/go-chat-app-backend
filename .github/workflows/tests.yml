@@ -1,25 +1,37 @@
-# name: "Go chat-app's API Tests"
+name: "Go chat-app CI"
 
-# on:
-#   push:
-#     branches: [main] # Runs on main and any refactor branch
-#   pull_request:
-#     branches: [main]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-# jobs:
-#   test:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Set up Go
-#         uses: actions/setup-go@v5
-#         with:
-#           go-version: "1.25.5" # Use the latest Go version
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache: true # Pro-tip: This speeds up your runs significantly
 
-#       - name: Install dependencies
-#         run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-#       - name: Run Tests
-#         run: go test -v ./... # Runs all tests, including your mockery-based ones
+      # Step 1: Linting (First line of defense)
+      - name: Run Linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.5
+
+      # Step 2: Unit Tests (Second line of defense)
+      - name: Run Unit Tests
+        run: go test -v -short ./... # -short skips heavy integration tests if you have them
+
+      # Step 3: Race Condition Detection
+      - name: Run Race Detector
+        run: go test -race ./internal/usecases/...

@@ -37,15 +37,6 @@ type loginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type tokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
-
-type refreshRequest struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
-}
-
 type registerRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

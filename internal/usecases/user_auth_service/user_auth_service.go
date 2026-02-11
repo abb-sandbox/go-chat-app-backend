@@ -33,7 +33,7 @@ func AuthService(
 
 func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) error {
 	err := s.UserRepository.CheckEmailExistence(ctx, user.Email)
-	if errors.Is(app_errors.ErrUserAlreadyExists, err) {
+	if errors.Is(err, app_errors.ErrUserAlreadyExists) {
 		s.Logger.Info(err.Error(), "email", user.Email)
 		return err
 	}
@@ -42,7 +42,11 @@ func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) 
 		return app_errors.ErrInternalServerError
 	}
 
-	newLinkAsKey := s.JWTService.GenerateActivationLink(ctx)
+	newLinkAsKey, err := s.JWTService.GenerateActivationLink(ctx)
+	if err != nil {
+		s.Logger.Error(err, "Method  JWTService.GenerateActivationLink", "user", user)
+		return app_errors.ErrInternalServerError
+	}
 
 	err = s.Cache.SaveUserInCache(ctx, newLinkAsKey, user, s.ActivationTimeExpiry)
 	if err != nil {
@@ -50,7 +54,7 @@ func (s *UserAuthServiceImpl) Register(ctx context.Context, user entities.User) 
 		return app_errors.ErrInternalServerError
 	}
 
-	err = s.MailingService.SendActivationCode(ctx, user.Email, newLinkAsKey)
+	err = s.MailingService.SendActivationLink(ctx, user.Email, newLinkAsKey)
 	if err != nil {
 		s.Logger.Error(err, "Method on MailingService", "user", user, "link", newLinkAsKey)
 		return app_errors.ErrInternalServerError

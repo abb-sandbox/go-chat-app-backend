@@ -14,12 +14,9 @@ import (
 
 // Package-level, reusable errors
 var (
-	ErrCacheMiss        = errors.New("cache miss")
-	ErrSessionExpired   = errors.New("session already expired")
-	ErrInvalidRedisDB   = errors.New("invalid redis db index")
-	defaultDialTimeout  = 5 * time.Second
-	defaultReadTimeout  = 3 * time.Second
-	defaultWriteTimeout = 3 * time.Second
+	ErrCacheMiss      = errors.New("cache miss")
+	ErrSessionExpired = errors.New("session already expired")
+	ErrInvalidRedisDB = errors.New("invalid redis db index")
 )
 
 type RedisCache struct {

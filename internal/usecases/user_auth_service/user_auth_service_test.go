@@ -315,3 +315,193 @@ func Test_Login(t *testing.T) {
 	}
 
 }
+
+// Test_Refresh 9 FAILS , 1 SUCCESS
+func Test_Refresh(t *testing.T) {
+
+	var randomUndefinedError error = app_errors.ErrInternalServerError
+	var newAccessToken = "newAccesToken"
+	mockSession := entities.Session{
+		ID:           "mockSessionID",
+		UserID:       "userID",
+		IsAdmin:      false,
+		RefreshToken: mock.Anything,
+
+		ExpiresAt: time.Now().Add(time.Hour),
+
+		UserAgent: mock.Anything,
+		ClientIP:  mock.Anything,
+	}
+	mockSession2 := entities.Session{
+		ID:           "mockSessionID2",
+		UserID:       "userID",
+		IsAdmin:      false,
+		RefreshToken: mock.Anything,
+
+		ExpiresAt: time.Now().Add(time.Hour),
+
+		UserAgent: mock.Anything,
+		ClientIP:  mock.Anything,
+	}
+
+	RefreshTests := []struct {
+		name     string
+		runMocks func(*UserAuthMocks)
+		Error    error
+	}{
+		{
+			name: "Success:  refreshed token successfully",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession.RefreshToken).Return(mockSession.ID, mockSession.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession.ID).Return(mockSession, nil)
+				// Generate a new token pair for the user
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mockSession.UserID).Return(newAccessToken, mockSession2.RefreshToken, nil)
+				// Create and save a new session for the new refresh token
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mockSession.UserID, mockSession2.RefreshToken, mockSession2.UserAgent, mockSession2.ClientIP).Return(mockSession2, nil)
+				userAuthMocks.mockCache.EXPECT().SaveSession(userAuthMocks.ctx, mockSession2).Return(nil)
+				// Remove the old session (best-effort, but propagate error)
+				userAuthMocks.mockCache.EXPECT().RemoveSessionByID(userAuthMocks.ctx, mock.Anything).Return(nil)
+
+			},
+			Error: nil,
+		},
+		{
+			name: "Fail:  ValidateRefreshToken",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession.RefreshToken).Return(mockSession.ID, mockSession.UserID, app_errors.ErrRefreshTokenIsStolen)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			},
+			Error: app_errors.ErrRefreshTokenIsStolen,
+		},
+		{
+			name: "Fail:  GetSessionByID",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession.RefreshToken).Return(mockSession.ID, mockSession.UserID, nil)
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession.ID).Return(mockSession, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  session is expired",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, entities.Session{}).Return(mock.Anything, mock.Anything, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mock.Anything).Return(entities.Session{}, nil)
+
+				userAuthMocks.mockLogger.EXPECT().Info(app_errors.ErrSessionTimeExpired.Error(), mock.Anything, mock.Anything)
+
+			},
+			Error: app_errors.ErrSessionTimeExpired,
+		},
+		{
+			name: "Fail:  session mismatch",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+
+				mutatedSession := mockSession2
+				mutatedSession.RefreshToken = "AnotherRefreshToken"
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mutatedSession, nil) // Ensure token in session matches provided token
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: app_errors.ErrRefreshTokenIsStolen,
+		},
+		{
+			name: "Fail:  UserAgent and ClientIP are unconsistent",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+
+				mutatedSession := mockSession2
+				mutatedSession.UserAgent = "AnotherUserAgent"
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mutatedSession, nil) // Ensure token in session matches provided token
+				// Confirm UserAgent and ClientIP are consistent with the stored session
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: app_errors.ErrRefreshTokenIsStolen,
+		},
+		{
+			name: "Fail:  GenerateTokenPair",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mockSession2, nil) // Ensure token in session matches provided token
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mockSession2.UserID).Return(mock.Anything, mock.Anything, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+		{
+			name: "Fail:  CreateSession",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mockSession2, nil) // Ensure token in session matches provided token
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mockSession2.UserID).Return(mock.Anything, mock.Anything, nil)
+				// Create and save a new session for the new refresh token
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mockSession2.UserID, mockSession2.RefreshToken, mockSession2.UserAgent, mockSession2.ClientIP).Return(mockSession2, randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+		{
+			name: "Fail:  SaveSession",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mockSession2, nil) // Ensure token in session matches provided token
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mockSession2.UserID).Return(mock.Anything, mock.Anything, nil)
+				// Create and save a new session for the new refresh token
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mockSession2.UserID, mockSession2.RefreshToken, mockSession2.UserAgent, mockSession2.ClientIP).Return(mockSession2, nil)
+				userAuthMocks.mockCache.EXPECT().SaveSession(userAuthMocks.ctx, mockSession2).Return(randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(randomUndefinedError, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: randomUndefinedError,
+		},
+		{
+			name: "Fail:  RemoveSessionByID",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				// Validate the refresh token first and extract the session ID and userID
+				userAuthMocks.mockJWTService.EXPECT().ValidateRefreshToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
+				// Fetch the session from Redis by session ID
+				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mockSession2, nil) // Ensure token in session matches provided token
+				userAuthMocks.mockJWTService.EXPECT().GenerateTokenPair(userAuthMocks.ctx, mockSession2.UserID).Return(mock.Anything, mock.Anything, nil)
+				// Create and save a new session for the new refresh token
+				userAuthMocks.mockJWTService.EXPECT().CreateSession(userAuthMocks.ctx, mockSession2.UserID, mockSession2.RefreshToken, mockSession2.UserAgent, mockSession2.ClientIP).Return(mockSession2, nil)
+				userAuthMocks.mockCache.EXPECT().SaveSession(userAuthMocks.ctx, mockSession2).Return(nil)
+				// Remove the old session (best-effort, but propagate error)
+				userAuthMocks.mockCache.EXPECT().RemoveSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(randomUndefinedError)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything)
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+	}
+
+	for _, test := range RefreshTests {
+		userAuthMocks := GetNewUserAuthMocks(t)
+
+		test.runMocks(userAuthMocks)
+
+		_, _, err := userAuthMocks.mockUserAuth.Refresh(userAuthMocks.ctx, mock.Anything, mock.Anything, mock.Anything)
+
+		if err == nil {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, test.Error), "Expected: %v  ; but got : %v", test.Error, err)
+		}
+	}
+}

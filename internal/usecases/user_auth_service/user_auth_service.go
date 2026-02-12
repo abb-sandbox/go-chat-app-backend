@@ -140,13 +140,13 @@ func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, 
 
 	// Ensure token in session matches provided token
 	if session.RefreshToken != RefreshToken {
-		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "Refresh token mismatch", "sessionID", sessionID)
+		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "Refresh token mismatch", "session.RefreshToken", session.RefreshToken, "RefreshToken", RefreshToken)
 		return "", "", app_errors.ErrRefreshTokenIsStolen
 	}
 
 	// Confirm UserAgent and ClientIP are consistent with the stored session
 	if session.UserAgent != userAgent || session.ClientIP != ClientIP {
-		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "UserAgent/ClientIP changed", "sessionID", sessionID, "stored_user_agent", session.UserAgent, "stored_client_ip", session.ClientIP)
+		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "UserAgent/ClientIP changed", "session.UserAgent", session.UserAgent, "userAgent", userAgent, "session.ClientIP", session.ClientIP, "ClientIP", ClientIP)
 		return "", "", app_errors.ErrRefreshTokenIsStolen
 	}
 

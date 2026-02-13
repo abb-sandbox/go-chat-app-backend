@@ -81,7 +81,7 @@ func Test_RegisterUser(t *testing.T) {
 			Error: nil,
 		},
 		{
-			name: "Error : User already exists",
+			name: "FAil : CheckEmailExistence, User already exists",
 			runMocks: func(mocks *UserAuthMocks) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(app_errors.ErrUserAlreadyExists)
 				mocks.mockLogger.EXPECT().Info(app_errors.ErrUserAlreadyExists.Error(), mock.Anything, mock.Anything).Once()
@@ -89,13 +89,30 @@ func Test_RegisterUser(t *testing.T) {
 			Error: app_errors.ErrUserAlreadyExists,
 		},
 		{
-			name: "Error:  Internal server error , mailing is down ",
+			name: "Fail : CheckEmailExistence, Cache is not fetching",
+			runMocks: func(mocks *UserAuthMocks) {
+				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(app_errors.ErrInternalServerError)
+				mocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+		{
+			name: "Fail:  GenerateActivationLink ",
+			runMocks: func(mocks *UserAuthMocks) {
+				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
+				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, app_errors.ErrInternalServerError)
+				mocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+		{
+			name: "Fail:  Internal server error , mailing is down ",
 			runMocks: func(mocks *UserAuthMocks) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
 				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, nil)
-				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newRandomLinkString, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(nil)
-				mocks.mockMailingService.EXPECT().SendActivationLink(mocks.ctx, mockUser.Email, newRandomLinkString).Return(app_errors.ErrInternalServerError)
-				mocks.mockLogger.EXPECT().Error(mock.Anything, mock.Anything, mock.Anything).Once()
+				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newRandomLinkString, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(app_errors.ErrInternalServerError)
+				mocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
 
 			},
 			Error: app_errors.ErrInternalServerError,
@@ -106,14 +123,6 @@ func Test_RegisterUser(t *testing.T) {
 				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(nil)
 				mocks.mockJWTService.EXPECT().GenerateActivationLink(mocks.ctx).Return(mock.Anything, nil)
 				mocks.mockCache.EXPECT().SaveUserInCache(mocks.ctx, newRandomLinkString, mockUser, mocks.mockUserAuth.ActivationTimeExpiry).Return(app_errors.ErrInternalServerError)
-				mocks.mockLogger.EXPECT().Error(mock.Anything, mock.Anything, mock.Anything).Once()
-			},
-			Error: app_errors.ErrInternalServerError,
-		},
-		{
-			name: "Error:  Internal server error , user repo is down ",
-			runMocks: func(mocks *UserAuthMocks) {
-				mocks.mockUserRepo.EXPECT().CheckEmailExistence(mocks.ctx, mockUser.Email).Return(app_errors.ErrInternalServerError)
 				mocks.mockLogger.EXPECT().Error(mock.Anything, mock.Anything, mock.Anything).Once()
 			},
 			Error: app_errors.ErrInternalServerError,
@@ -496,6 +505,59 @@ func Test_Refresh(t *testing.T) {
 		test.runMocks(userAuthMocks)
 
 		_, _, err := userAuthMocks.mockUserAuth.Refresh(userAuthMocks.ctx, mock.Anything, mock.Anything, mock.Anything)
+
+		if err == nil {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, test.Error), "Expected: %v  ; but got : %v", test.Error, err)
+		}
+	}
+}
+
+func Test_Logout(t *testing.T) {
+	mockSession := entities.Session{
+		ID:           "mockSessionID",
+		UserID:       "userID",
+		IsAdmin:      false,
+		RefreshToken: mock.Anything,
+
+		ExpiresAt: time.Now().Add(time.Hour),
+
+		UserAgent: mock.Anything,
+		ClientIP:  mock.Anything,
+	}
+
+	LogoutTests := []struct {
+		name     string
+		runMocks func(*UserAuthMocks)
+		Error    error
+	}{
+		{
+			name: "Success:  refreshed token successfully",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockCache.EXPECT().RemoveSessionByID(userAuthMocks.ctx, mockSession.ID).Return(nil)
+
+			},
+			Error: nil,
+		},
+		{
+			name: "Fail:  RemoveSessionByID",
+			runMocks: func(userAuthMocks *UserAuthMocks) {
+				userAuthMocks.mockCache.EXPECT().RemoveSessionByID(userAuthMocks.ctx, mockSession.ID).Return(app_errors.ErrInternalServerError)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrInternalServerError, mock.Anything, mock.Anything, mock.Anything).Once()
+
+			},
+			Error: app_errors.ErrInternalServerError,
+		},
+	}
+
+	for _, test := range LogoutTests {
+		userAuthMocks := GetNewUserAuthMocks(t)
+
+		test.runMocks(userAuthMocks)
+
+		err := userAuthMocks.mockUserAuth.Logout(userAuthMocks.ctx, mockSession.ID)
 
 		if err == nil {
 			assert.NoError(t, err)

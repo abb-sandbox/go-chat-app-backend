@@ -35,10 +35,8 @@ type JWTService interface {
 	GenerateActivationLink(ctx context.Context) (link string, err error)
 	GenerateTokenPair(ctx context.Context, userID string) (accessToken, refreshToken string, err error)
 	CreateSession(ctx context.Context, userID string, refreshToken, userAgent, ClientIP string) (entities.Session, error)
-	// Validates a refresh token and returns its associated session ID and userID.
-	ValidateRefreshToken(ctx context.Context, refreshToken string) (sessionID string, userID string, err error)
-	// ValidateAccessToken validates an access token and returns the session ID and userIDs
-	ValidateAccessToken(ctx context.Context, accessToken string) (sessionID string, userID string, err error)
+	// Validates a jwt (both access and refresh) token and returns its associated session ID and userID.
+	ValidateJWTToken(ctx context.Context, jwtToken string) (sessionID string, userID string, err error)
 }
 
 type Logger interface {

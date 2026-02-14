@@ -50,14 +50,11 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 	}
 
 	// --- Access Token Claims ---
-	claimsAcc := UserClaims{
-		// 2. Use the shared Session ID (JTI)
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        sessionID,
-			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+	claimsAcc := jwt.RegisteredClaims{
+		ID:        sessionID,
+		Subject:   userID,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsAcc)
 	signedAcc, err := at.SignedString(j.secret)
@@ -85,7 +82,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 // CreateSession is CORRECT after fixing GenerateTokenPair.
 func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshToken, userAgent, clientIP string) (entities.Session, error) {
 	// sessionID (JTI) is now unified.
-	sessionID, parsedUserID, err := j.ValidateRefreshToken(ctx, refreshToken)
+	sessionID, parsedUserID, err := j.ValidateJWTToken(ctx, refreshToken)
 	if err != nil {
 		return entities.Session{}, err
 	}
@@ -105,7 +102,7 @@ func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshTo
 	return session, nil
 }
 
-func (j *JWTService) ValidateRefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+func (j *JWTService) ValidateJWTToken(ctx context.Context, refreshToken string) (string, string, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.secret, nil
 	})
@@ -116,23 +113,6 @@ func (j *JWTService) ValidateRefreshToken(ctx context.Context, refreshToken stri
 	if !ok || !token.Valid {
 		return "", "", errors.New("invalid refresh token")
 	}
-	userID := claims.Subject
-
-	return claims.ID, userID, nil
-}
-
-func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string) (string, string, error) {
-	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.secret, nil
-	})
-	if err != nil {
-		return "", "", err
-	}
-	claims, ok := token.Claims.(*UserClaims)
-	if !ok || !token.Valid {
-		return "", "", errors.New("invalid access token")
-	}
-
 	userID := claims.Subject
 
 	return claims.ID, userID, nil

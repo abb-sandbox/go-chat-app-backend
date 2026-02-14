@@ -119,7 +119,7 @@ func (s *UserAuthServiceImpl) Login(ctx context.Context, email, password, userAg
 
 func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, userAgent string, ClientIP string) (AccessToken, NewRefreshToken string, err error) {
 	// Validate the refresh token first and extract the session ID and userID
-	sessionID, userID, err := s.JWTService.ValidateRefreshToken(ctx, RefreshToken)
+	sessionID, userID, err := s.JWTService.ValidateJWTToken(ctx, RefreshToken)
 	if err != nil {
 		s.Logger.Error(err, "JWTService.ValidateRefreshToken()", "refreshToken", RefreshToken)
 		return "", "", app_errors.ErrRefreshTokenIsStolen

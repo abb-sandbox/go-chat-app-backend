@@ -30,7 +30,7 @@ func AuthMiddleware(jwtService usecases.JWTService, redis usecases.Cache, logger
 			return
 		}
 
-		sessionID, userID, err := jwtService.ValidateAccessToken(c.Request.Context(), token)
+		sessionID, userID, err := jwtService.ValidateJWTToken(c.Request.Context(), token)
 		if err != nil {
 			logger.Info("JWT validation failed", "error", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized: Invalid token."})

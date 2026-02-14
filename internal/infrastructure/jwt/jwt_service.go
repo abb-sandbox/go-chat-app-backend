@@ -33,7 +33,7 @@ func New(cfg config.Config) *JWTService {
 }
 
 func (j *JWTService) GenerateActivationLink(ctx context.Context) (string, error) {
-	b := make([]byte, 32)
+	b := make([]byte, 64)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", fmt.Errorf("Error while utilizing GenerateActivationLink : %v ", err)
@@ -95,7 +95,7 @@ func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshTo
 
 	expiresAt := time.Now().Add(j.longTTL)
 	session := entities.Session{
-		ID:           sessionID, // Correctly using the unified JTI (sessionID)
+		ID:           sessionID,
 		UserID:       userID,
 		RefreshToken: refreshToken,
 		ExpiresAt:    expiresAt,
@@ -132,7 +132,6 @@ func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string
 	if !ok || !token.Valid {
 		return "", "", errors.New("invalid access token")
 	}
-	// REMOVED: fmt.Println(claims) is debug code and should not be in production.
 
 	userID := claims.Subject
 
@@ -140,7 +139,7 @@ func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string
 }
 
 func newJTI() (string, error) {
-	b := make([]byte, 16)
+	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", fmt.Errorf("Error while creating new JTI")

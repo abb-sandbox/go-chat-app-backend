@@ -3,29 +3,32 @@ package app_errors
 import "errors"
 
 var (
-	EmailAlreadyExists = errors.New("email already exists")
-	InvalidCredentials = errors.New("invalid credentials")
-	LinkIsExpired      = errors.New("link is expired")
-	InvalidCode        = errors.New("invalid code")
+	EmailAlreadyExists = errors.New("EMAIL_ALREADY_EXISTS")
+	InvalidCredentials = errors.New("INVALID_CREDENTIALS")
+	LinkIsExpired      = errors.New("LINK_EXPIRED")
+	InvalidCode        = errors.New("INVALID_CODE")
 )
 
 // AuthHandler errors
 var (
 	// Showing that user already exists
-	ErrUserAlreadyExists     = errors.New("user already exists")
-	ErrInternalServerError   = errors.New("internal server error")
-	ErrActivationTimeExpired = errors.New("activation time is expired")
+	ErrUserAlreadyExists     = errors.New("USER_ALREADY_EXISTS")
+	ErrInternalServerError   = errors.New("INTERNAL_SERVER_ERROR")
+	ErrActivationTimeExpired = errors.New("ACTIVATION_TIME_EXPIRED")
+
+	// JWTService errors
+	ErrExpiredToken       = errors.New("EXPIRED_TOKEN")
+	ErrEmptyAuthCookies   = errors.New("EMPTY_AUTH_COOKIES")
+	ErrSessionTimeExpired = errors.New("SESSION_TIME_EXPIRED")
 	// Occurs when a valid refresh token is used from a different user agent or IP
-	ErrRefreshTokenIsStolen = errors.New("refresh token is stolen")
-	// Session has already expired
-	ErrSessionTimeExpired = errors.New("session time expired")
+	ErrRefreshTokenStolen = errors.New("REFRESH_TOKEN_STOLEN")
 	// For http handlers
-	ErrBadRequest   = errors.New("bad request")
-	ErrUserNotFound = errors.New("user not found")
+	ErrBadRequest   = errors.New("BAD_REQUEST")
+	ErrUserNotFound = errors.New("USER_NOT_FOUND")
 
 	// Policy errors
-	ErrFilterQueryIsTooLong = errors.New("filter query is too long")
+	ErrFilterQueryTooLong = errors.New("FILTER_QUERY_TOO_LONG")
 
-	ErrOrganizationNotFound = errors.New("organization not found")
-	ErrWrongActivationCode  = errors.New("wrong activation code")
+	ErrOrganizationNotFound = errors.New("ORGANIZATION_NOT_FOUND")
+	ErrWrongActivationCode  = errors.New("WRONG_ACTIVATION_CODE")
 )

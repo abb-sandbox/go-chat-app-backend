@@ -3,13 +3,13 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	_ "github.com/AzimBB/go-chat-app-backend/docs"
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
+	cookie_ops "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -27,14 +27,14 @@ func NewAuthHandler(s UserAuthService, l usecases.Logger, c config.Config) *Auth
 	return &AuthHandler{Service: s, cfg: c}
 }
 
-const (
-	AccessTokenCookie  = "access_token"
-	RefreshTokenCookie = "refresh_token"
-)
-
 type loginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type AuthResponse struct {
+	AccessToken  string `json:"access_token" `
+	RefreshToken string `json:"refresh_token" `
 }
 
 type registerRequest struct {
@@ -164,7 +164,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 
 	// 2. Call Service Layer
 	// Service should return the tokens and their expiration durations (needed for cookies)
-	access, refresh, err := h.Service.Login(c.Request.Context(), req.Email, req.Password, ua, ip)
+	accessToken, refreshToken, err := h.Service.Login(c.Request.Context(), req.Email, req.Password, ua, ip)
 
 	if err != nil {
 		// Log the error internally but return a generic Unauthorized to prevent enumeration attacks
@@ -175,103 +175,60 @@ func (h *AuthHandler) login(c *gin.Context) {
 
 	// 3. Set Secure HttpOnly Cookies
 	// Store access token in a short-lived cookie
-	h.setAuthCookie(c, AccessTokenCookie, access, h.cfg.JWT_SHORT)
+	cookie_ops.SetAuthCookie(c, cookie_ops.AccessTokenCookie, accessToken, h.cfg.JWT_SHORT)
 
 	// Store refresh token in a long-lived cookie (Crucial for session persistence)
-	h.setAuthCookie(c, RefreshTokenCookie, refresh, h.cfg.JWT_LONG)
+	cookie_ops.SetAuthCookie(c, cookie_ops.RefreshTokenCookie, refreshToken, h.cfg.JWT_LONG)
 
 	// 4. Respond to Client
 	// We only return a success message; tokens are in the cookie header
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful. Tokens set via cookie."})
-}
-
-// Helper method to set a secure HttpOnly cookie
-// Note: This requires access to the expiration time from your service layer.
-func (h *AuthHandler) setAuthCookie(c *gin.Context, name string, value string, expires time.Duration) {
-	// Determine the max age in seconds
-	maxAge := int(expires.Seconds())
-
-	c.SetCookie(
-		name,
-		value,
-		maxAge,
-		"/",  // Path: Cookie is accessible across the entire application
-		"",   // Domain: Empty defaults to current host (secure)
-		true, // Secure: Must be true in production (requires HTTPS)
-		true, // HttpOnly: Prevents client-side JavaScript access (Anti-XSS)
-	)
+	c.JSON(http.StatusOK, AuthResponse{AccessToken: accessToken, RefreshToken: refreshToken})
 }
 
 func (h *AuthHandler) refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie(RefreshTokenCookie)
+	refreshToken, err := c.Cookie(cookie_ops.RefreshTokenCookie)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Refresh token cookie missing."})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrEmptyAuthCookies})
 		return
 	}
 
 	ua := c.GetHeader("User-Agent")
 	ip := c.ClientIP()
 
-	access, newRefresh, err := h.Service.Refresh(c.Request.Context(), refreshToken, ua, ip)
+	newAccess, newRefresh, err := h.Service.Refresh(c.Request.Context(), refreshToken, ua, ip)
 	if err != nil {
 		h.Logger.Info("Token refresh failed", "error", err.Error())
-		c.SetCookie(AccessTokenCookie, "", -1, "/", "", true, true)
-		c.SetCookie(RefreshTokenCookie, "", -1, "/", "", true, true)
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Session invalid or expired. Please re-login."})
+		cookie_ops.ClearAuthCookies(c)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": app_errors.ErrInternalServerError})
 		return
 	}
 	shortTTL := h.cfg.JWT_SHORT
 	longTTL := h.cfg.JWT_LONG
 
-	h.setAuthCookie(c, AccessTokenCookie, access, shortTTL)
-	h.setAuthCookie(c, RefreshTokenCookie, newRefresh, longTTL)
-	c.JSON(http.StatusOK, gin.H{"message": "Tokens successfully refreshed."})
+	cookie_ops.SetAuthCookie(c, cookie_ops.AccessTokenCookie, newAccess, shortTTL)
+	cookie_ops.SetAuthCookie(c, cookie_ops.RefreshTokenCookie, newRefresh, longTTL)
+	c.JSON(http.StatusOK, AuthResponse{AccessToken: newAccess, RefreshToken: newRefresh})
 }
 
 func (h *AuthHandler) logout(c *gin.Context) {
 	sid, ok := middleware.GetSessionID(c)
 
 	if !ok {
-		h.clearAuthCookies(c)
+		cookie_ops.ClearAuthCookies(c)
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Session identifier missing."})
 		return
 	}
 
 	if err := h.Service.Logout(c.Request.Context(), sid); err != nil {
 		h.Logger.Error(errors.New("Logout service failed to delete session"), "session_id", sid, "error", err.Error())
-		h.clearAuthCookies(c)
+		cookie_ops.ClearAuthCookies(c)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Logout failed internally, but client cookies cleared."})
 		return
 	}
 
-	h.clearAuthCookies(c)
+	cookie_ops.ClearAuthCookies(c)
 
 	c.Status(http.StatusNoContent)
-}
-
-// Helper method to clear cookies by setting MaxAge to -1
-func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
-	// Clear Access Token
-	c.SetCookie(
-		AccessTokenCookie,
-		"",
-		-1, // MaxAge: -1 immediately deletes the cookie
-		"/",
-		"",
-		true, // Secure flag must match the original setting
-		true, // HttpOnly flag must match the original setting
-	)
-
-	// Clear Refresh Token
-	c.SetCookie(
-		RefreshTokenCookie,
-		"",
-		-1, // MaxAge: -1 immediately deletes the cookie
-		"/",
-		"",
-		true,
-		true,
-	)
 }
 
 // @Summary		Get current user info

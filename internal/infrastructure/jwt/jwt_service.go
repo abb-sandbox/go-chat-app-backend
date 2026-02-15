@@ -15,6 +15,8 @@ import (
 )
 
 type UserClaims struct {
+	UserAgent string
+	IP        string
 	jwt.RegisteredClaims
 }
 
@@ -43,7 +45,7 @@ func (j *JWTService) GenerateActivationLink(ctx context.Context) (string, error)
 }
 
 // GenerateTokenPair is FIXED: Uses the SAME Session ID (JTI) for both tokens.
-func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (string, string, error) {
+func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string, userAgent string, ip string) (string, string, error) {
 	// 1. Generate the Session ID (JTI) once
 	sessionID, err := newJTI()
 	if err != nil {
@@ -51,12 +53,15 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 	}
 
 	// --- Access Token Claims ---
-	claimsAcc := jwt.RegisteredClaims{
-		ID:        sessionID,
-		Subject:   userID,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-	}
+	claimsAcc := UserClaims{
+		UserAgent: userAgent,
+		IP:        ip,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        sessionID,
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		}}
 	at := jwt.NewWithClaims(jwt.SigningMethodES256, claimsAcc)
 	signedAcc, err := at.SignedString(j.secret)
 	if err != nil {
@@ -83,7 +88,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 // CreateSession is CORRECT after fixing GenerateTokenPair.
 func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshToken, userAgent, clientIP string) (entities.Session, error) {
 	// sessionID (JTI) is now unified.
-	sessionID, parsedUserID, err := j.ValidateJWTToken(ctx, refreshToken)
+	sessionID, parsedUserID, err := j.ValidateRefreshToken(ctx, refreshToken)
 	if err != nil {
 		return entities.Session{}, err
 	}
@@ -105,9 +110,28 @@ func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshTo
 
 // ValidateAccessToken is for validating the access token only with math (because we use HYBRID Stateful JWT Auth)
 
-func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string)
+func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string, userAgent string, ip string) (string, string, error) {
+	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return j.secret, nil
+	})
+	if err != nil {
+		return "", "", err
+	}
+	claims, ok := token.Claims.(*UserClaims)
+	if !ok || !token.Valid {
+		return "", "", app_errors.ErrInvalidJwtToken
+	} else if claims.ExpiresAt.Before(time.Now()) {
+		return "", "", app_errors.ErrExpiredAccessToken
+	} else if userAgent != claims.UserAgent {
+		return "", "", app_errors.ErrAccessTokenStolen
+	} else if ip != claims.IP {
+		return "", "", app_errors.ErrAccessTokenStolen
+	}
 
-func (j *JWTService) ValidateAccessJWTToken(ctx context.Context, refreshToken string) (string, string, error) {
+	return claims.ID, claims.Subject, err
+}
+
+func (j *JWTService) ValidateRefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.secret, nil
 	})
@@ -116,15 +140,12 @@ func (j *JWTService) ValidateAccessJWTToken(ctx context.Context, refreshToken st
 	}
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok || !token.Valid {
-		return "", "", errors.New("invalid jwt token")
-	}
-	if claims.ExpiresAt.Before(time.Now()) {
-		return "", "", app_errors.ErrExpiredToken
+		return "", "", app_errors.ErrInvalidJwtToken
+	} else if claims.ExpiresAt.Before(time.Now()) {
+		return "", "", app_errors.ErrExpiredSession
 	}
 
-	userID := claims.Subject
-
-	return claims.ID, userID, nil
+	return claims.ID, claims.Subject, err
 }
 
 func newJTI() (string, error) {

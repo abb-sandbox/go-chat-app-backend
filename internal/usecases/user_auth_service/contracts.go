@@ -33,10 +33,11 @@ type MailingService interface {
 
 type JWTService interface {
 	GenerateActivationLink(ctx context.Context) (link string, err error)
-	GenerateTokenPair(ctx context.Context, userID string) (accessToken, refreshToken string, err error)
+	GenerateTokenPair(ctx context.Context, userID string, userAgent string, ClientIP string) (accessToken, refreshToken string, err error)
 	CreateSession(ctx context.Context, userID string, refreshToken, userAgent, ClientIP string) (entities.Session, error)
 	// Validates a jwt (both access and refresh) token and returns its associated session ID and userID.
-	ValidateJWTToken(ctx context.Context, jwtToken string) (sessionID string, userID string, err error)
+	ValidateAccessToken(ctx context.Context, accessToken string, userAgent string, ip string) (string, string, error)
+	ValidateRefreshToken(ctx context.Context, refreshToken string) (string, string, error)
 }
 
 type Logger interface {

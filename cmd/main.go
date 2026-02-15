@@ -23,7 +23,6 @@ import (
 	infrapostgres "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infraredis "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/redis"
 	handlers "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/handlers/auth"
-	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
 	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 )
@@ -82,7 +81,7 @@ func main() {
 	})
 	// Register auth routes
 	h := handlers.NewAuthHandler(authService, lg, cfg)
-	h.RegisterRoutes(api_v1, middleware.AuthMiddleware(jwtSvc, cache, lg))
+	h.RegisterRoutes(api_v1, h.AuthMiddleware(jwtSvc, cache, lg))
 
 	// Run server with graceful shutdown
 	port := os.Getenv("PORT")

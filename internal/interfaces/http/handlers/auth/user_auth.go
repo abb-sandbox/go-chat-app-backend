@@ -24,5 +24,6 @@ type UserAuthService interface {
 	Refresh(ctx context.Context, RefreshToken string, userAgent string, ClientIP string) (AccessToken, NewRefreshToken string, err error)
 	// Logout by session ID (typically the JTI/JWT ID)
 	Logout(ctx context.Context, sessionID string) error
+	RevokeAccessBySession(ctx context.Context, sessionID string) error
 	// ==================================
 }

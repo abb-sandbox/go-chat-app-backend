@@ -99,7 +99,7 @@ func (s *UserAuthServiceImpl) Login(ctx context.Context, email, password, userAg
 		s.Logger.Error(err, "UserRepository.GetUserIDAndPriorityByEmail()", "email", email)
 		return "", "", app_errors.ErrInternalServerError
 	}
-	accessToken, refreshToken, err := s.JWTService.GenerateTokenPair(ctx, userID)
+	accessToken, refreshToken, err := s.JWTService.GenerateTokenPair(ctx, userID, userAgent, ClientIP)
 	if err != nil {
 		s.Logger.Error(err, "JWTService.GenerateTokenPair()", "userID", userID)
 		return "", "", app_errors.ErrInternalServerError
@@ -119,10 +119,10 @@ func (s *UserAuthServiceImpl) Login(ctx context.Context, email, password, userAg
 
 func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, userAgent string, ClientIP string) (AccessToken, NewRefreshToken string, err error) {
 	// Validate the refresh token first and extract the session ID and userID
-	sessionID, userID, err := s.JWTService.ValidateJWTToken(ctx, RefreshToken)
+	sessionID, userID, err := s.JWTService.ValidateRefreshToken(ctx, RefreshToken)
 	if err != nil {
 		s.Logger.Error(err, "JWTService.ValidateRefreshToken()", "refreshToken", RefreshToken)
-		return "", "", app_errors.ErrRefreshTokenStolen
+		return "", "", err
 	}
 
 	// Fetch the session from Redis by session ID
@@ -134,8 +134,8 @@ func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, 
 
 	// Check session expiry
 	if session.ExpiresAt.Before(time.Now()) {
-		s.Logger.Info(app_errors.ErrSessionTimeExpired.Error(), "sessionID", sessionID)
-		return "", "", app_errors.ErrSessionTimeExpired
+		s.Logger.Info(app_errors.ErrExpiredSession.Error(), "sessionID", sessionID)
+		return "", "", app_errors.ErrExpiredSession
 	}
 
 	// Ensure token in session matches provided token
@@ -151,7 +151,7 @@ func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, 
 	}
 
 	// Generate a new token pair for the user
-	accessToken, newRefreshToken, err := s.JWTService.GenerateTokenPair(ctx, userID)
+	accessToken, newRefreshToken, err := s.JWTService.GenerateTokenPair(ctx, userID, userAgent, ClientIP)
 	if err != nil {
 		s.Logger.Error(err, "JWTService.GenerateTokenPair()", "userID", userID)
 		return "", "", app_errors.ErrInternalServerError
@@ -185,4 +185,13 @@ func (s *UserAuthServiceImpl) Logout(ctx context.Context, sessionID string) erro
 		return app_errors.ErrInternalServerError
 	}
 	return nil
+}
+
+func (s *UserAuthServiceImpl) RevokeAccessBySession(ctx context.Context, sessionID string) error {
+	err := s.Cache.RemoveSessionByID(ctx, sessionID)
+	if err != nil {
+		s.Logger.Error(err, "RedisCache.RemoveSessionByID()", "sessionID", sessionID)
+		return app_errors.ErrInternalServerError
+	}
+	return err
 }

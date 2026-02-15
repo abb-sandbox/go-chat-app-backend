@@ -3,12 +3,12 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	_ "github.com/AzimBB/go-chat-app-backend/docs"
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
-	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/middleware"
 	cookie_ops "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
@@ -188,7 +188,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 func (h *AuthHandler) refresh(c *gin.Context) {
 	refreshToken, err := c.Cookie(cookie_ops.RefreshTokenCookie)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrEmptyAuthCookies})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrEmptyAuthCreds})
 		return
 	}
 
@@ -211,7 +211,7 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) logout(c *gin.Context) {
-	sid, ok := middleware.GetSessionID(c)
+	sid, ok := GetSessionID(c)
 
 	if !ok {
 		cookie_ops.ClearAuthCookies(c)
@@ -239,7 +239,7 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Failure		401	{object}	map[string]string	"error: unauthorized"
 // @Router			/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
-	uid, ok := middleware.GetUserID(c)
+	uid, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -253,4 +253,99 @@ func (h *AuthHandler) me(c *gin.Context) {
 // @ Router /health [get]
 func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy and strong"})
+}
+
+// middlewares
+
+// Use simplified, idiomatic key names
+type contextKey string
+
+const (
+	userIDKey    contextKey = "user_id"
+	sessionIDKey contextKey = "session_id"
+	// Cookie name constant
+	AccessTokenCookie = "access_token"
+)
+
+// AuthMiddleware is a Gin-compatible middleware performing authentication checks.
+func (h *AuthHandler) AuthMiddleware(jwtService usecases.JWTService, redis usecases.Cache, logger usecases.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accessToken := getAccessToken(c)
+
+		if accessToken == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrEmptyAuthCreds})
+			return
+		}
+		currentIP := c.ClientIP()
+		currentUserAgent := c.Request.UserAgent()
+
+		sessionID, userID, err := jwtService.ValidateAccessToken(c.Request.Context(), accessToken, currentUserAgent, currentIP)
+		if errors.Is(err, app_errors.ErrExpiredAccessToken) {
+			logger.Info("Access Token is expired", "sessionID", sessionID)
+			// OPTIONAL: Clear the expired cookie here for the client
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrExpiredAccessToken})
+		} else if errors.Is(err, app_errors.ErrInvalidJwtToken) {
+			logger.Info("Access Token is invalid", "accessToken", accessToken)
+			// OPTIONAL: Clear the expired cookie here for the client
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrInvalidJwtToken})
+		} else if errors.Is(err, app_errors.ErrAccessTokenStolen) {
+			logger.Info("Access Token is stolen", "currentIP", currentIP, "currentUserAgent", currentUserAgent)
+			// OPTIONAL: Clear the expired cookie here for the client
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrAccessTokenStolen})
+		} else if err != nil {
+			logger.Info("JWT validation failed", "error", err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": app_errors.ErrInternalServerError})
+		} else {
+			// Populate Gin context
+			c.Set(string(userIDKey), userID)
+			c.Set(string(sessionIDKey), sessionID)
+			c.Next()
+		}
+
+		c.SetCookie(AccessTokenCookie, "", -1, "/", "", true, true)
+		err = h.Service.RevokeAccessBySession(c.Request.Context(), sessionID)
+		if err != nil {
+			logger.Info("Failed to delete sessionFrom cache failed", "error", err)
+		}
+
+	}
+}
+
+// getAccessToken attempts to retrieve the access token from cookies, falling back to the Authorization header.
+func getAccessToken(c *gin.Context) string {
+	// 1. Check for HttpOnly Cookie (Highest Priority)
+	token, err := c.Cookie(AccessTokenCookie)
+	if err == nil && token != "" {
+		return token
+	}
+
+	// 2. Fallback to Authorization Header
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	return ""
+}
+
+// --- Gin Helpers (Idiomatic Naming) ---
+
+// GetUserID retrieves the user ID from the Gin context.
+func GetUserID(c *gin.Context) (int, bool) {
+	v, ok := c.Get(string(userIDKey))
+	if !ok {
+		return 0, false
+	}
+	id, ok := v.(int)
+	return id, ok
+}
+
+// GetSessionID retrieves the session ID from the Gin context.
+func GetSessionID(c *gin.Context) (string, bool) {
+	v, ok := c.Get(string(sessionIDKey))
+	if !ok {
+		return "", false
+	}
+	sid, ok := v.(string)
+	return sid, ok
 }

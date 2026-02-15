@@ -9,13 +9,11 @@ import (
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
+	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	redislib "github.com/redis/go-redis/v9"
 )
 
-// Package-level, reusable errors
 var (
-	ErrCacheMiss      = errors.New("cache miss")
-	ErrSessionExpired = errors.New("session already expired")
 	ErrInvalidRedisDB = errors.New("invalid redis db index")
 )
 
@@ -92,7 +90,7 @@ func (r *RedisCache) GetUserFromCache(ctx context.Context, key string) (entities
 	v, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redislib.Nil) {
-			return entities.User{}, ErrCacheMiss
+			return entities.User{}, app_errors.ErrCacheMiss
 		}
 		return entities.User{}, err
 	}
@@ -120,7 +118,7 @@ func (r *RedisCache) SaveSession(ctx context.Context, session entities.Session) 
 
 	ttl := time.Until(session.ExpiresAt)
 	if ttl <= 0 {
-		return ErrSessionExpired
+		return app_errors.ErrExpiredSession
 	}
 
 	b, err := json.Marshal(session)
@@ -140,7 +138,7 @@ func (r *RedisCache) GetSessionByID(ctx context.Context, id string) (entities.Se
 	v, err := r.client.Get(ctx, id).Result()
 	if err != nil {
 		if errors.Is(err, redislib.Nil) {
-			return entities.Session{}, ErrCacheMiss
+			return entities.Session{}, app_errors.ErrCacheMiss
 		}
 		return entities.Session{}, err
 	}

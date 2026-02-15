@@ -380,11 +380,11 @@ func Test_Refresh(t *testing.T) {
 			name: "Fail:  ValidateRefreshToken",
 			runMocks: func(userAuthMocks *UserAuthMocks) {
 				// Validate the refresh token first and extract the session ID and userID
-				userAuthMocks.mockJWTService.EXPECT().ValidateJWTToken(userAuthMocks.ctx, mockSession.RefreshToken).Return(mockSession.ID, mockSession.UserID, app_errors.ErrRefreshTokenIsStolen)
-				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+				userAuthMocks.mockJWTService.EXPECT().ValidateJWTToken(userAuthMocks.ctx, mockSession.RefreshToken).Return(mockSession.ID, mockSession.UserID, app_errors.ErrRefreshTokenStolen)
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenStolen, mock.Anything, mock.Anything, mock.Anything).Once()
 
 			},
-			Error: app_errors.ErrRefreshTokenIsStolen,
+			Error: app_errors.ErrRefreshTokenStolen,
 		},
 		{
 			name: "Fail:  GetSessionByID",
@@ -419,9 +419,9 @@ func Test_Refresh(t *testing.T) {
 				userAuthMocks.mockJWTService.EXPECT().ValidateJWTToken(userAuthMocks.ctx, mockSession2.RefreshToken).Return(mockSession2.ID, mockSession2.UserID, nil)
 				// Fetch the session from Redis by session ID
 				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mutatedSession, nil) // Ensure token in session matches provided token
-				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenStolen, mock.Anything, mock.Anything, mock.Anything).Once()
 			},
-			Error: app_errors.ErrRefreshTokenIsStolen,
+			Error: app_errors.ErrRefreshTokenStolen,
 		},
 		{
 			name: "Fail:  UserAgent and ClientIP are unconsistent",
@@ -434,9 +434,9 @@ func Test_Refresh(t *testing.T) {
 				// Fetch the session from Redis by session ID
 				userAuthMocks.mockCache.EXPECT().GetSessionByID(userAuthMocks.ctx, mockSession2.ID).Return(mutatedSession, nil) // Ensure token in session matches provided token
 				// Confirm UserAgent and ClientIP are consistent with the stored session
-				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenIsStolen, mock.Anything, mock.Anything, mock.Anything).Once()
+				userAuthMocks.mockLogger.EXPECT().Error(app_errors.ErrRefreshTokenStolen, mock.Anything, mock.Anything, mock.Anything).Once()
 			},
-			Error: app_errors.ErrRefreshTokenIsStolen,
+			Error: app_errors.ErrRefreshTokenStolen,
 		},
 		{
 			name: "Fail:  GenerateTokenPair",

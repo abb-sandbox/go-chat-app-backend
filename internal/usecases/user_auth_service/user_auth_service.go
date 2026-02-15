@@ -122,7 +122,7 @@ func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, 
 	sessionID, userID, err := s.JWTService.ValidateJWTToken(ctx, RefreshToken)
 	if err != nil {
 		s.Logger.Error(err, "JWTService.ValidateRefreshToken()", "refreshToken", RefreshToken)
-		return "", "", app_errors.ErrRefreshTokenIsStolen
+		return "", "", app_errors.ErrRefreshTokenStolen
 	}
 
 	// Fetch the session from Redis by session ID
@@ -140,14 +140,14 @@ func (s *UserAuthServiceImpl) Refresh(ctx context.Context, RefreshToken string, 
 
 	// Ensure token in session matches provided token
 	if session.RefreshToken != RefreshToken {
-		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "Refresh token mismatch", "session.RefreshToken", session.RefreshToken, "RefreshToken", RefreshToken)
-		return "", "", app_errors.ErrRefreshTokenIsStolen
+		s.Logger.Error(app_errors.ErrRefreshTokenStolen, "Refresh token mismatch", "session.RefreshToken", session.RefreshToken, "RefreshToken", RefreshToken)
+		return "", "", app_errors.ErrRefreshTokenStolen
 	}
 
 	// Confirm UserAgent and ClientIP are consistent with the stored session
 	if session.UserAgent != userAgent || session.ClientIP != ClientIP {
-		s.Logger.Error(app_errors.ErrRefreshTokenIsStolen, "UserAgent/ClientIP changed", "session.UserAgent", session.UserAgent, "userAgent", userAgent, "session.ClientIP", session.ClientIP, "ClientIP", ClientIP)
-		return "", "", app_errors.ErrRefreshTokenIsStolen
+		s.Logger.Error(app_errors.ErrRefreshTokenStolen, "UserAgent/ClientIP changed", "session.UserAgent", session.UserAgent, "userAgent", userAgent, "session.ClientIP", session.ClientIP, "ClientIP", ClientIP)
+		return "", "", app_errors.ErrRefreshTokenStolen
 	}
 
 	// Generate a new token pair for the user

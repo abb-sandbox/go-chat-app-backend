@@ -10,6 +10,7 @@ import (
 
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
+	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -56,7 +57,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.shortTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsAcc)
+	at := jwt.NewWithClaims(jwt.SigningMethodES256, claimsAcc)
 	signedAcc, err := at.SignedString(j.secret)
 	if err != nil {
 		return "", "", err
@@ -70,7 +71,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string) (stri
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.longTTL)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
-	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRef)
+	rt := jwt.NewWithClaims(jwt.SigningMethodES256, claimsRef)
 	signedRef, err := rt.SignedString(j.secret)
 	if err != nil {
 		return "", "", err
@@ -102,7 +103,11 @@ func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshTo
 	return session, nil
 }
 
-func (j *JWTService) ValidateJWTToken(ctx context.Context, refreshToken string) (string, string, error) {
+// ValidateAccessToken is for validating the access token only with math (because we use HYBRID Stateful JWT Auth)
+
+func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string)
+
+func (j *JWTService) ValidateAccessJWTToken(ctx context.Context, refreshToken string) (string, string, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.secret, nil
 	})
@@ -111,8 +116,12 @@ func (j *JWTService) ValidateJWTToken(ctx context.Context, refreshToken string) 
 	}
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok || !token.Valid {
-		return "", "", errors.New("invalid refresh token")
+		return "", "", errors.New("invalid jwt token")
 	}
+	if claims.ExpiresAt.Before(time.Now()) {
+		return "", "", app_errors.ErrExpiredToken
+	}
+
 	userID := claims.Subject
 
 	return claims.ID, userID, nil

@@ -39,7 +39,7 @@ func (p *PostgresUserRepository) CheckEmailExistence(ctx context.Context, email 
 	err = p.pool.QueryRow(ctx, q, args...).Scan(&id)
 
 	if err == nil {
-		return app_errors.EmailAlreadyExists
+		return app_errors.ErrUserAlreadyExists
 	}
 	if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, stdsql.ErrNoRows) {
 		return nil
@@ -96,13 +96,13 @@ func (p *PostgresUserRepository) CheckPassword(ctx context.Context, email, passw
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, stdsql.ErrNoRows) {
-			return app_errors.InvalidCredentials
+			return app_errors.ErrInvalidCreds
 		}
 		return err
 	}
 
 	if bcrypt.CompareHashAndPassword(passwordHash, []byte(password)) != nil {
-		return app_errors.InvalidCredentials
+		return app_errors.ErrInvalidCreds
 	}
 
 	return nil

@@ -80,8 +80,8 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "time": time.Now().Format(time.RFC3339)})
 	})
 	// Register auth routes
-	h := handlers.NewAuthHandler(authService, lg, cfg)
-	h.RegisterRoutes(api_v1, h.AuthMiddleware(jwtSvc, cache, lg))
+	h := handlers.NewAuthHandler(authService, lg, cfg, jwtSvc)
+	h.RegisterRoutes(api_v1, h.AuthMiddleware())
 
 	// Run server with graceful shutdown
 	port := os.Getenv("PORT")

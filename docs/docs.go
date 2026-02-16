@@ -15,54 +15,59 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/activate/{link}/{code}": {
-            "post": {
-                "description": "Activates a user via email link and random 6-digit code",
-                "tags": [
-                    "Auth"
+        "/api/v1/auth/activate/{link}": {
+            "get": {
+                "description": "Activation of account after registration step",
+                "consumes": [
+                    "text/plain"
                 ],
-                "summary": "Activate user account",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "Activate",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Activation Link UUID",
+                        "description": "Generated link's end side edge",
                         "name": "link",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "6-digit Verification Code",
-                        "name": "code",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "message: success",
+                    "201": {
+                        "description": "Returns the html page of success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "type": "string"
                         }
                     },
                     "400": {
-                        "description": "error message",
+                        "description": "Could not get the link from url path. Possible \"error\" values : [BAD_REQUEST]",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Activation link is expired . Possible \"error\" values : [ACTIVATION_TIME_EXPIRED]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/auth/login": {
+        "/api/v1/auth/login": {
             "post": {
-                "description": "Authenticates user and sets HttpOnly cookies for Access and Refresh tokens",
+                "description": "Basic Login operation with email and password",
                 "consumes": [
                     "application/json"
                 ],
@@ -70,13 +75,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Authentication"
                 ],
-                "summary": "Login user",
+                "summary": "Login",
                 "parameters": [
                     {
-                        "description": "Login Credentials",
-                        "name": "login",
+                        "description": "Provide your creds for creation new session on certain device",
+                        "name": "payload",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -85,86 +90,99 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "message: Login successful",
+                    "201": {
+                        "description": "Session was successfully created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Possible \"error\" values: [EMPTY_AUTH_CREDS] ",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "message: Invalid credentials",
+                        "description": "Possible \"error\" values: [INVALID_CREDS, \"\"]",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Returns the UID of the currently logged-in user from the session",
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Get current user info",
-                "responses": {
-                    "200": {
-                        "description": "user_id: string",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/register": {
+        "/api/v1/auth/logout": {
             "post": {
-                "description": "Creates a new user account with hashed password",
+                "description": "Logging out by revoking session",
                 "consumes": [
-                    "application/json"
+                    "text/plain"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "Log out",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "'Bearer \u003cAccessToken\u003e'",
+                        "name": "AccessToken",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Logged out successfully"
+                    },
+                    "401": {
+                        "description": "Possible \"error\" values: [EMPTY_AUTH_CREDS]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "description": "Endpoint for checking authorization",
+                "consumes": [
+                    "text/plain"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Profile"
                 ],
-                "summary": "Register a new user",
+                "summary": "Checking authorization",
                 "parameters": [
                     {
-                        "description": "Registration Info",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.registerRequest"
-                        }
+                        "type": "string",
+                        "description": "'Bearer \u003cAccessToken\u003e'",
+                        "name": "AccessToken",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "message: registered",
+                    "200": {
+                        "description": "user_id\": some_user_id (int)",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -172,13 +190,10 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "400": {
-                        "description": "error message",
+                    "500": {
+                        "description": "Possible \"error\" values: [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -186,22 +201,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.loginRequest": {
+        "handlers.AuthResponse": {
             "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
             "properties": {
-                "email": {
+                "access_token": {
                     "type": "string"
                 },
-                "password": {
+                "refresh_token": {
                     "type": "string"
                 }
             }
         },
-        "handlers.registerRequest": {
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.loginRequest": {
             "type": "object",
             "required": [
                 "email",

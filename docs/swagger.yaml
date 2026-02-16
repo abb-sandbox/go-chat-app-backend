@@ -1,15 +1,17 @@
 definitions:
-  handlers.loginRequest:
+  handlers.AuthResponse:
     properties:
-      email:
+      access_token:
         type: string
-      password:
+      refresh_token:
         type: string
-    required:
-    - email
-    - password
     type: object
-  handlers.registerRequest:
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.loginRequest:
     properties:
       email:
         type: string
@@ -25,117 +27,128 @@ info:
   title: Go Chat App API
   version: "1.0"
 paths:
-  /auth/activate/{link}/{code}:
-    post:
-      description: Activates a user via email link and random 6-digit code
+  /api/v1/auth/activate/{link}:
+    get:
+      consumes:
+      - text/plain
+      description: Activation of account after registration step
       parameters:
-      - description: Activation Link UUID
+      - description: Generated link's end side edge
         in: path
         name: link
         required: true
         type: string
-      - description: 6-digit Verification Code
-        in: path
-        name: code
-        required: true
-        type: string
+      produces:
+      - text/html
       responses:
-        "200":
-          description: 'message: success'
+        "201":
+          description: Returns the html page of success
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            type: string
         "400":
-          description: error message
+          description: 'Could not get the link from url path. Possible "error" values
+            : [BAD_REQUEST]'
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Activate user account
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "410":
+          description: 'Activation link is expired . Possible "error" values : [ACTIVATION_TIME_EXPIRED]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 'Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Activate
       tags:
-      - Auth
-  /auth/login:
+      - Registration
+  /api/v1/auth/login:
     post:
       consumes:
       - application/json
-      description: Authenticates user and sets HttpOnly cookies for Access and Refresh
-        tokens
+      description: Basic Login operation with email and password
       parameters:
-      - description: Login Credentials
+      - description: Provide your creds for creation new session on certain device
         in: body
-        name: login
+        name: payload
         required: true
         schema:
           $ref: '#/definitions/handlers.loginRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: 'message: Login successful'
+        "201":
+          description: Session was successfully created
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.AuthResponse'
+        "400":
+          description: 'Possible "error" values: [EMPTY_AUTH_CREDS] '
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
-          description: 'message: Invalid credentials'
+          description: 'Possible "error" values: [INVALID_CREDS, ""]'
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Login user
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 'Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Login
       tags:
-      - Auth
-  /auth/me:
-    get:
-      description: Returns the UID of the currently logged-in user from the session
-      responses:
-        "200":
-          description: 'user_id: string'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: 'error: unauthorized'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - CookieAuth: []
-      summary: Get current user info
-      tags:
-      - Auth
-  /auth/register:
+      - Authentication
+  /api/v1/auth/logout:
     post:
       consumes:
-      - application/json
-      description: Creates a new user account with hashed password
+      - text/plain
+      description: Logging out by revoking session
       parameters:
-      - description: Registration Info
-        in: body
-        name: user
+      - description: '''Bearer <AccessToken>'''
+        in: header
+        name: AccessToken
         required: true
-        schema:
-          $ref: '#/definitions/handlers.registerRequest'
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "204":
+          description: Logged out successfully
+        "401":
+          description: 'Possible "error" values: [EMPTY_AUTH_CREDS]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 'Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Log out
+      tags:
+      - Authorization
+  /api/v1/auth/me:
+    get:
+      consumes:
+      - text/plain
+      description: Endpoint for checking authorization
+      parameters:
+      - description: '''Bearer <AccessToken>'''
+        in: header
+        name: AccessToken
+        required: true
+        type: string
       produces:
       - application/json
       responses:
-        "201":
-          description: 'message: registered'
+        "200":
+          description: 'user_id": some_user_id (int)'
           schema:
             additionalProperties:
               type: string
             type: object
-        "400":
-          description: error message
+        "500":
+          description: 'Possible "error" values: [INTERNAL_SERVER_ERROR]'
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Register a new user
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Checking authorization
       tags:
-      - Auth
+      - Profile
 securityDefinitions:
   CookieAuth:
     in: cookie

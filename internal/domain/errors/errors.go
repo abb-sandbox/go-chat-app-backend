@@ -2,13 +2,6 @@ package app_errors
 
 import "errors"
 
-var (
-	EmailAlreadyExists = errors.New("EMAIL_ALREADY_EXISTS")
-	InvalidCredentials = errors.New("INVALID_CREDENTIALS")
-	LinkIsExpired      = errors.New("LINK_EXPIRED")
-	InvalidCode        = errors.New("INVALID_CODE")
-)
-
 // AuthHandler errors
 var (
 	// Showing that user already exists
@@ -16,6 +9,7 @@ var (
 	ErrInternalServerError   = errors.New("INTERNAL_SERVER_ERROR")
 	ErrActivationTimeExpired = errors.New("ACTIVATION_TIME_EXPIRED")
 	ErrCacheMiss             = errors.New("CACHE_MISS")
+	ErrInvalidCreds          = errors.New("INVALID_CREDS")
 
 	// JWTService errors
 	ErrExpiredToken       = errors.New("EXPIRED_TOKEN")
@@ -32,7 +26,4 @@ var (
 
 	// Policy errors
 	ErrFilterQueryTooLong = errors.New("FILTER_QUERY_TOO_LONG")
-
-	ErrOrganizationNotFound = errors.New("ORGANIZATION_NOT_FOUND")
-	ErrWrongActivationCode  = errors.New("WRONG_ACTIVATION_CODE")
 )

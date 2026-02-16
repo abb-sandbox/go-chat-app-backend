@@ -254,10 +254,10 @@ func Test_Login(t *testing.T) {
 		{
 			name: "Fail:  User logged in successfully",
 			runMocks: func(userAuthMocks *UserAuthMocks) {
-				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(app_errors.InvalidCredentials)
-				userAuthMocks.mockLogger.EXPECT().Info(app_errors.InvalidCredentials.Error(), mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				userAuthMocks.mockUserRepo.EXPECT().CheckPassword(userAuthMocks.ctx, mockUser.Email, string(mockUser.PasswordHash)).Return(app_errors.ErrInvalidCreds)
+				userAuthMocks.mockLogger.EXPECT().Info(app_errors.ErrInvalidCreds.Error(), mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			},
-			Error: app_errors.InvalidCredentials,
+			Error: app_errors.ErrInvalidCreds,
 		},
 		{
 			name: "Fail:  check password",

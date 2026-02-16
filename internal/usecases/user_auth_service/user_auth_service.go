@@ -87,7 +87,7 @@ func (s *UserAuthServiceImpl) ActivateUser(ctx context.Context, link string) err
 
 func (s *UserAuthServiceImpl) Login(ctx context.Context, email, password, userAgent, ClientIP string) (string, string, error) {
 	err := s.UserRepository.CheckPassword(ctx, email, password)
-	if errors.Is(err, app_errors.InvalidCredentials) {
+	if errors.Is(err, app_errors.ErrInvalidCreds) {
 		s.Logger.Info(err.Error(), "email", email, "password", password)
 		return "", "", err
 	} else if err != nil {

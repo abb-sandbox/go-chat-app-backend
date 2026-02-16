@@ -38,8 +38,12 @@ type AuthResponse struct {
 }
 
 type registerRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" example:"user@example.com" binding:"required,email"`
+	Password string `json:"password" example:"P@ssword123" binding:"required,min=8"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
 }
 
 // RegisterRoutes attaches endpoints
@@ -73,25 +77,28 @@ func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware
 	auth.GET("/me", h.me)
 }
 
-// @Summary		Register a new user
-// @Description	Creates a new user account with hashed password
-// @Tags			Auth
-// @Accept			json
-// @Produce		json
-// @Param			user	body		registerRequest		true	"Registration Info"
-// @Success		201		{object}	map[string]string	"message: registered"
-// @Failure		400		{object}	map[string]string	"error message"
-// @Router			/auth/register [post]
+// register method for starting the registration process
+//	@Summary		Register
+//	@Description	For initiating registration process with sending activation link
+//	@Tags			Registration
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body	registerRequest	true	"User registration details"
+//	@Success		201		"Activation link is successfully sent"
+//	@Failure		400		{object}	ErrorResponse	"Request is invalid. Possible "error" values:[USER_ALREADY_EXISTS,"all	others	are	caused	by	the	request's	incorrectness"]"
+//	@Failure		500		{object}	ErrorResponse	"Server failed to process. Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Router			/api/v1/auth/register [post]
+
 func (h *AuthHandler) register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": app_errors.ErrBadRequest.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 
@@ -102,60 +109,65 @@ func (h *AuthHandler) register(c *gin.Context) {
 
 	if err := h.Service.Register(c.Request.Context(), user); err != nil {
 		if errors.Is(err, app_errors.ErrUserAlreadyExists) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "registered"})
+	c.Status(http.StatusCreated)
 }
 
-// @Summary		Activate user account
-// @Description	Activates a user via email link and random 6-digit code
-// @Tags			Auth
-// @Param			link	path		string				true	"Activation Link UUID"
-// @Param			code	path		string				true	"6-digit Verification Code"
-// @Success		200		{object}	map[string]string	"message: success"
-// @Failure		400		{object}	map[string]string	"error message"
-// @Router			/auth/activate/{link}/{code} [post]
+// activate activation of account after registration step
+//
+//	@Summary		Activate
+//	@Description	Activation of account after registration step
+//	@Tags			Registration
+//	@Accept			plain
+//	@Produce		html
+//	@Param			link	path		string			true	"Generated link's end side edge"
+//	@Success		201		{string}	string			"Returns the html page of success"
+//	@Failure		400		{object}	ErrorResponse	"Could not get the link from url path. Possible "error" values : [BAD_REQUEST]"
+//	@Failure		410		{object}	ErrorResponse	"Activation link is expired . Possible "error" values : [ACTIVATION_TIME_EXPIRED]"
+//	@Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Router			/api/v1/auth/activate/{link} [get]
 func (h *AuthHandler) activate(c *gin.Context) {
 	link, ok := c.Params.Get("link")
 	if link == "" || !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": app_errors.ErrBadRequest})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: app_errors.ErrBadRequest.Error()})
 		return
 	}
 
 	if err := h.Service.ActivateUser(c.Request.Context(), link); err != nil {
-		if errors.Is(err, app_errors.ErrUserAlreadyExists) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, app_errors.ErrActivationTimeExpired) {
+			c.JSON(http.StatusGone, ErrorResponse{Error: err.Error()})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
-	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(verification_success))
+	c.Data(http.StatusCreated, "text/html; charset=utf-8", []byte(verification_success))
 }
 
-//	@Summary		Login user
-//	@Description	Authenticates user and sets HttpOnly cookies for Access and Refresh tokens
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			login	body		loginRequest			true	"Login Credentials"
-//	@Success		200		{object}	map[string]interface{}	"message: Login successful"
-//	@Failure		401		{object}	map[string]string		"message: Invalid credentials"
-//	@Router			/auth/login [post]
-//
-// Revised login method in AuthHandler
+// @Summary		Login
+// @Description	Basic Login operation with email and password
+// @Tags			Authentication
+// @Accept			json
+// @Produce		json
+// @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
+// @Success		201		{object}	AuthResponse	"Session was successfully created"
+// @Failure		400		{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
+// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, ""]"
+// @Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Router			/api/v1/auth/login [post]
 func (h *AuthHandler) login(c *gin.Context) {
 	var req loginRequest
 
 	// 1. Bind and Validate Request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Return structured, less verbose error
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request payload or format."})
 		h.Logger.Warn("Login bind failed", "error", err)
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
@@ -165,11 +177,14 @@ func (h *AuthHandler) login(c *gin.Context) {
 	// 2. Call Service Layer
 	// Service should return the tokens and their expiration durations (needed for cookies)
 	accessToken, refreshToken, err := h.Service.Login(c.Request.Context(), req.Email, req.Password, ua, ip)
-
-	if err != nil {
+	if errors.Is(err, app_errors.ErrInternalServerError) {
+		h.Logger.Info("Login failed because of server", "email", req.Email, "error", err.Error())
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+		return
+	} else if err != nil {
 		// Log the error internally but return a generic Unauthorized to prevent enumeration attacks
 		h.Logger.Info("Login failed attempt", "email", req.Email, "error", err.Error())
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials."})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrInvalidCreds.Error()})
 		return
 	}
 
@@ -185,10 +200,21 @@ func (h *AuthHandler) login(c *gin.Context) {
 	c.JSON(http.StatusOK, AuthResponse{AccessToken: accessToken, RefreshToken: refreshToken})
 }
 
+//	@Summary		Refresh
+//	@Description	Get new pair of token
+//	@Tags			Authorization
+//	@Accept			plain
+//	@Produce		json
+//	@Param			RefreshToken	header		string			true	"'Bearer <RefreshToken>'"
+//	@Success		200				{object}	AuthResponse	"New refreshed token pair returned. So update them both"
+//	@Failure		401				{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
+//	@Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Router			/api/v1/auth/refresh [post]
+
 func (h *AuthHandler) refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie(cookie_ops.RefreshTokenCookie)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": app_errors.ErrEmptyAuthCreds})
+	refreshToken := getRefreshToken(c)
+	if refreshToken == "" {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
@@ -196,10 +222,13 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 	ip := c.ClientIP()
 
 	newAccess, newRefresh, err := h.Service.Refresh(c.Request.Context(), refreshToken, ua, ip)
-	if err != nil {
+	if errors.Is(err, app_errors.ErrInternalServerError) {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	} else if err != nil && !errors.Is(err, app_errors.ErrInternalServerError) {
 		h.Logger.Info("Token refresh failed", "error", err.Error())
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": app_errors.ErrInternalServerError})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: err.Error()})
 		return
 	}
 	shortTTL := h.cfg.JWT_SHORT
@@ -210,19 +239,29 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 	c.JSON(http.StatusOK, AuthResponse{AccessToken: newAccess, RefreshToken: newRefresh})
 }
 
+// @Summary		Log out
+// @Description	Logging out by revoking session
+// @Tags			Authorization
+// @Accept			plain
+// @Produce		plain
+// @Param			AccessToken	header	string	true	"'Bearer <AccessToken>'"
+// @Success		204			"Logged out successfully"
+// @Failure		401			{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS]"
+// @Failure		500			{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) logout(c *gin.Context) {
 	sid, ok := GetSessionID(c)
 
 	if !ok {
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Session identifier missing."})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
 	if err := h.Service.Logout(c.Request.Context(), sid); err != nil {
 		h.Logger.Error(errors.New("Logout service failed to delete session"), "session_id", sid, "error", err.Error())
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Logout failed internally, but client cookies cleared."})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 
@@ -231,40 +270,39 @@ func (h *AuthHandler) logout(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// @Summary		Get current user info
-// @Description	Returns the UID of the currently logged-in user from the session
-// @Tags			Auth
-// @Security		CookieAuth
-// @Success		200	{object}	map[string]string	"user_id: string"
-// @Failure		401	{object}	map[string]string	"error: unauthorized"
-// @Router			/auth/me [get]
+// @Summary		Checking authorization
+// @Description	Endpoint for checking authorization
+// @Tags			Profile
+// @Accept			plain
+// @Produce		json
+// @Param			AccessToken	header		string				true	"'Bearer <AccessToken>'"
+// @Success		200			{object}	map[string]string	""user_id": some_user_id (int)"
+// @Failure		500			{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
+// @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
 	uid, ok := GetUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"user_id": uid})
 }
 
-// @ Summary Endpoint for checing health
-// @ Description Endpoint for checing health
-// @ Success 200 {object} map[string]string "message: string"
-// @ Router /health [get]
+// @Summary		Health
+// @Description	For container health checks (CI/CD)
+// @Tags			devops
+// @Accept			plain
+// @Produce		plain
+// @Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}s"
 func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy and strong"})
 }
 
 // middlewares
 
-// Use simplified, idiomatic key names
-type contextKey string
-
 const (
-	userIDKey    contextKey = "user_id"
-	sessionIDKey contextKey = "session_id"
-	// Cookie name constant
-	AccessTokenCookie = "access_token"
+	userIDKey    = "user_id"
+	sessionIDKey = "session_id"
 )
 
 // --- Gin Helpers (Idiomatic Naming) ---

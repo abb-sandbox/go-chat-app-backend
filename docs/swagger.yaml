@@ -21,6 +21,19 @@ definitions:
     - email
     - password
     type: object
+  handlers.registerRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: P@ssword123
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
 info:
   contact: {}
   description: Backend API for Flutter Chat App.
@@ -149,9 +162,32 @@ paths:
       summary: Checking authorization
       tags:
       - Profile
-securityDefinitions:
-  CookieAuth:
-    in: cookie
-    name: access_token
-    type: apiKey
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: For initiating registration process with sending activation link
+      parameters:
+      - description: User registration details
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Activation link is successfully sent
+        "400":
+          description: "Request is invalid. Possible \"error\" values:[USER_ALREADY_EXISTS,\"all\tothers\tare\tcaused\tby\tthe\trequest's\tincorrectness\"]"
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 'Server failed to process. Possible "error" values : [INTERNAL_SERVER_ERROR]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Register
+      tags:
+      - Registration
 swagger: "2.0"

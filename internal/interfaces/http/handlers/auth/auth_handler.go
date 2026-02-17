@@ -24,7 +24,7 @@ type AuthHandler struct {
 }
 
 func NewAuthHandler(s UserAuthService, l usecases.Logger, c config.Config, jwt usecases.JWTService) *AuthHandler {
-	return &AuthHandler{Service: s, cfg: c, JWTService: jwt}
+	return &AuthHandler{Service: s, cfg: c, JWTService: jwt, Logger: l}
 }
 
 type loginRequest struct {
@@ -78,6 +78,7 @@ func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware
 }
 
 // register method for starting the registration process
+//
 //	@Summary		Register
 //	@Description	For initiating registration process with sending activation link
 //	@Tags			Registration
@@ -88,7 +89,6 @@ func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware
 //	@Failure		400		{object}	ErrorResponse	"Request is invalid. Possible "error" values:[USER_ALREADY_EXISTS,"all	others	are	caused	by	the	request's	incorrectness"]"
 //	@Failure		500		{object}	ErrorResponse	"Server failed to process. Possible "error" values : [INTERNAL_SERVER_ERROR]"
 //	@Router			/api/v1/auth/register [post]
-
 func (h *AuthHandler) register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -157,7 +157,7 @@ func (h *AuthHandler) activate(c *gin.Context) {
 // @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
 // @Success		201		{object}	AuthResponse	"Session was successfully created"
 // @Failure		400		{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
-// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, ""]"
+// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any other printable errors"]"
 // @Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/login [post]
 func (h *AuthHandler) login(c *gin.Context) {

@@ -190,6 +190,49 @@
                     }
                 }
             }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "description": "For initiating registration process with sending activation link",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "Register",
+                "parameters": [
+                    {
+                        "description": "User registration details",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.registerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Activation link is successfully sent"
+                    },
+                    "400": {
+                        "description": "Request is invalid. Possible \"error\" values:[USER_ALREADY_EXISTS,\"all\tothers\tare\tcaused\tby\tthe\trequest's\tincorrectness\"]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server failed to process. Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -226,13 +269,24 @@
                     "type": "string"
                 }
             }
-        }
-    },
-    "securityDefinitions": {
-        "CookieAuth": {
-            "type": "apiKey",
-            "name": "access_token",
-            "in": "cookie"
+        },
+        "handlers.registerRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "P@ssword123"
+                }
+            }
         }
     }
 }

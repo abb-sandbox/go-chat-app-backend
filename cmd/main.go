@@ -30,7 +30,7 @@ import (
 // @title						Go Chat App API
 // @version					1.0
 // @description				Backend API for Flutter Chat App.
-// @securityDefinitions.apikey	CookieAuth
+// @securityDefinitions.access_token	CookieAuth
 // @in							cookie
 // @name						access_token
 func main() {

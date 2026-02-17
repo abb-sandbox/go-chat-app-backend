@@ -21,12 +21,12 @@ func NewUser(email, password string) (User, error) {
 		return User{}, insecurePassword
 	}
 
-	passwordHash, error := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	return User{
 		Email:        email,
 		PasswordHash: passwordHash,
-	}, error
+	}, err
 }
 
 var (

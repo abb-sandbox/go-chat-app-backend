@@ -37,6 +37,9 @@ func New(cfg config.Config) *JWTService {
 		panic(err)
 	}
 	privkey, err := x509.ParseECPrivateKey(derBytes)
+	if err != nil {
+		panic(err)
+	}
 
 	return &JWTService{
 		privateSecret: privkey,

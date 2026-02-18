@@ -28,8 +28,8 @@ func NewAuthHandler(s UserAuthService, l usecases.Logger, c config.Config, jwt u
 }
 
 type loginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required,email" example:"user@example.com"`
+	Password string `json:"password" binding:"required" example:"P@ssword123"`
 }
 
 type AuthResponse struct {
@@ -45,6 +45,11 @@ type registerRequest struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
+const (
+	userIDKey    = "user_id"
+	sessionIDKey = "session_id"
+)
 
 // RegisterRoutes attaches endpoints
 func (h *AuthHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
@@ -157,7 +162,7 @@ func (h *AuthHandler) activate(c *gin.Context) {
 // @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
 // @Success		201		{object}	AuthResponse	"Session was successfully created"
 // @Failure		400		{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
-// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any other printable errors"]"
+// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any	other	printable	errors"]"
 // @Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/login [post]
 func (h *AuthHandler) login(c *gin.Context) {
@@ -200,17 +205,16 @@ func (h *AuthHandler) login(c *gin.Context) {
 	c.JSON(http.StatusOK, AuthResponse{AccessToken: accessToken, RefreshToken: refreshToken})
 }
 
-//	@Summary		Refresh
-//	@Description	Get new pair of token
-//	@Tags			Authorization
-//	@Accept			plain
-//	@Produce		json
-//	@Param			RefreshToken	header		string			true	"'Bearer <RefreshToken>'"
-//	@Success		200				{object}	AuthResponse	"New refreshed token pair returned. So update them both"
-//	@Failure		401				{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
-//	@Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
-//	@Router			/api/v1/auth/refresh [post]
-
+// @Summary		refresh
+// @Description	Get new pair of token
+// @Tags			Authorization
+// @Accept			plain
+// @Produce		json
+// @Param			Authorization	header		string			true	"Insert 'Bearer <RefreshToken>'"
+// @Success		200				{object}	AuthResponse	"New refreshed token pair returned. So update them both"
+// @Failure		401				{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
+// @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Router			/api/v1/auth/refresh [post]
 func (h *AuthHandler) refresh(c *gin.Context) {
 	refreshToken := getRefreshToken(c)
 	if refreshToken == "" {
@@ -244,10 +248,10 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 // @Tags			Authorization
 // @Accept			plain
 // @Produce		plain
-// @Param			AccessToken	header	string	true	"'Bearer <AccessToken>'"
-// @Success		204			"Logged out successfully"
-// @Failure		401			{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS]"
-// @Failure		500			{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Param			Authorization	header	string	true	"Insert 'Bearer <AccessToken>'"
+// @Success		204				"Logged out successfully"
+// @Failure		401				{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS]"
+// @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) logout(c *gin.Context) {
 	sid, ok := GetSessionID(c)
@@ -275,45 +279,43 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Tags			Profile
 // @Accept			plain
 // @Produce		json
-// @Param			AccessToken	header		string				true	"'Bearer <AccessToken>'"
-// @Success		200			{object}	map[string]string	""user_id": some_user_id (int)"
-// @Failure		500			{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
+// @Param			Authorization	header		string				true	"Insert 'Bearer <your_token>'"
+// @Success		200				{object}	map[string]string	""user_id": some_user_id (int)"
+// @Failure		500				{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
-	uid, ok := GetUserID(c)
+	user_id, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"user_id": uid})
+
+	c.JSON(http.StatusOK, gin.H{"user_id": user_id})
 }
 
-// @Summary		Health
-// @Description	For container health checks (CI/CD)
-// @Tags			devops
-// @Accept			plain
-// @Produce		plain
-// @Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}s"
+// Health
+//
+//	@Summary		Health
+//	@Description	For container health checks (CI/CD)
+//	@Tags			devops
+//	@Accept			plain
+//	@Produce		plain
+//	@Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}s"
 func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy and strong"})
 }
 
 // middlewares
 
-const (
-	userIDKey    = "user_id"
-	sessionIDKey = "session_id"
-)
-
 // --- Gin Helpers (Idiomatic Naming) ---
 
 // GetUserID retrieves the user ID from the Gin context.
-func GetUserID(c *gin.Context) (int, bool) {
+func GetUserID(c *gin.Context) (string, bool) {
 	v, ok := c.Get(string(userIDKey))
 	if !ok {
-		return 0, false
+		return "", false
 	}
-	id, ok := v.(int)
+	id, ok := v.(string)
 	return id, ok
 }
 

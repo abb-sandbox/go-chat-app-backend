@@ -103,7 +103,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Possible \"error\" values: [INVALID_CREDS, \"\"]",
+                        "description": "Possible \"error\" values: [INVALID_CREDS, \"any\tother\tprintable\terrors\"]",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -133,8 +133,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "'Bearer \u003cAccessToken\u003e'",
-                        "name": "AccessToken",
+                        "description": "Insert 'Bearer \u003cAccessToken\u003e'",
+                        "name": "Authorization",
                         "in": "header",
                         "required": true
                     }
@@ -174,8 +174,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "'Bearer \u003cAccessToken\u003e'",
-                        "name": "AccessToken",
+                        "description": "Insert 'Bearer \u003cyour_token\u003e'",
+                        "name": "Authorization",
                         "in": "header",
                         "required": true
                     }
@@ -192,6 +192,50 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Possible \"error\" values: [INTERNAL_SERVER_ERROR]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "description": "Get new pair of token",
+                "consumes": [
+                    "text/plain"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "refresh",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Insert 'Bearer \u003cRefreshToken\u003e'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New refreshed token pair returned. So update them both",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Possible \"error\" values: [INVALID_CREDS,\"all\tother\terrors\"]",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -271,10 +315,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "user@example.com"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "P@ssword123"
                 }
             }
         },

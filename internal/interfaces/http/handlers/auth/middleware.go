@@ -8,6 +8,7 @@ import (
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
 	cookie_ops "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // AuthMiddleware is a Gin-compatible middleware performing authentication checks.
@@ -15,9 +16,9 @@ import (
 //	@Summary		Auth middleware
 //	@Description	For checking every auhtorized endpoint of users
 //	@Tags			Auhtorization
-//	@Param			AccessToken	header		string			true	"'Bearer <AccessToken>'"
-//	@Failure		401			{object}	ErrorResponse	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
-//	@Failure		500			{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Param			Authorization	header		string			true	"Insert 'Bearer <AccessToken>'"
+//	@Failure		401				{object}	ErrorResponse	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
+//	@Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken := getAccessToken(c)
@@ -37,7 +38,7 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Checking for errors
-		if errors.Is(err, app_errors.ErrExpiredAccessToken) {
+		if errors.Is(err, app_errors.ErrExpiredAccessToken) || errors.Is(err, jwt.ErrTokenExpired) {
 			h.Logger.Info("Access Token is expired", "sessionID", sessionID)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrExpiredAccessToken.Error()})
 		} else if errors.Is(err, app_errors.ErrInvalidJwtToken) {

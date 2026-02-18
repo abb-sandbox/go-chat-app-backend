@@ -29,6 +29,11 @@ Makefile
 # env file
 .env
 
+# keys
+
+private.pem
+public.pem
+
 # Editor/IDE
 # .idea/
 # .vscode/

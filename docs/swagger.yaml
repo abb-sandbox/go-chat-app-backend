@@ -14,8 +14,10 @@ definitions:
   handlers.loginRequest:
     properties:
       email:
+        example: user@example.com
         type: string
       password:
+        example: P@ssword123
         type: string
     required:
     - email
@@ -98,7 +100,7 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "401":
-          description: 'Possible "error" values: [INVALID_CREDS, ""]'
+          description: "Possible \"error\" values: [INVALID_CREDS, \"any\tother\tprintable\terrors\"]"
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "500":
@@ -114,9 +116,9 @@ paths:
       - text/plain
       description: Logging out by revoking session
       parameters:
-      - description: '''Bearer <AccessToken>'''
+      - description: Insert 'Bearer <AccessToken>'
         in: header
-        name: AccessToken
+        name: Authorization
         required: true
         type: string
       produces:
@@ -141,9 +143,9 @@ paths:
       - text/plain
       description: Endpoint for checking authorization
       parameters:
-      - description: '''Bearer <AccessToken>'''
+      - description: Insert 'Bearer <your_token>'
         in: header
-        name: AccessToken
+        name: Authorization
         required: true
         type: string
       produces:
@@ -162,6 +164,35 @@ paths:
       summary: Checking authorization
       tags:
       - Profile
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - text/plain
+      description: Get new pair of token
+      parameters:
+      - description: Insert 'Bearer <RefreshToken>'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New refreshed token pair returned. So update them both
+          schema:
+            $ref: '#/definitions/handlers.AuthResponse'
+        "401":
+          description: "Possible \"error\" values: [INVALID_CREDS,\"all\tother\terrors\"]"
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: 'Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]'
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: refresh
+      tags:
+      - Authorization
   /api/v1/auth/register:
     post:
       consumes:

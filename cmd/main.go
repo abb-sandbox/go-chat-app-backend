@@ -27,12 +27,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// @title						Go Chat App API
-// @version					1.0
-// @description				Backend API for Flutter Chat App.
+// @title								Go Chat App API
+// @version							1.0
+// @description						Backend API for Flutter Chat App.
 // @securityDefinitions.access_token	CookieAuth
-// @in							cookie
-// @name						access_token
+// @in									cookie
+// @name								access_token
 func main() {
 	cfg := config.GetConfig()
 	var lg usecases.Logger = logger.NewZapLogger(cfg.LOG_LVL, cfg.DEV)

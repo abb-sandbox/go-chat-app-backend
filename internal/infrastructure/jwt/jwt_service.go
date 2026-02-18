@@ -2,8 +2,11 @@ package jwt
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -21,17 +24,25 @@ type UserClaims struct {
 }
 
 type JWTService struct {
-	secret   []byte
-	shortTTL time.Duration
-	longTTL  time.Duration
+	privateSecret *ecdsa.PrivateKey
+	publicSecret  *ecdsa.PublicKey
+	shortTTL      time.Duration
+	longTTL       time.Duration
 }
 
 // New returns a configured JWTService implementation.
 func New(cfg config.Config) *JWTService {
+	derBytes, err := hex.DecodeString(cfg.JWT_SECRET)
+	if err != nil {
+		panic(err)
+	}
+	privkey, err := x509.ParseECPrivateKey(derBytes)
+
 	return &JWTService{
-		secret:   []byte(cfg.JWT_SECRET),
-		shortTTL: cfg.JWT_SHORT,
-		longTTL:  cfg.JWT_LONG,
+		privateSecret: privkey,
+		publicSecret:  &privkey.PublicKey,
+		shortTTL:      cfg.JWT_SHORT,
+		longTTL:       cfg.JWT_LONG,
 	}
 }
 
@@ -63,7 +74,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string, userA
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		}}
 	at := jwt.NewWithClaims(jwt.SigningMethodES256, claimsAcc)
-	signedAcc, err := at.SignedString(j.secret)
+	signedAcc, err := at.SignedString(j.privateSecret)
 	if err != nil {
 		return "", "", err
 	}
@@ -77,7 +88,7 @@ func (j *JWTService) GenerateTokenPair(ctx context.Context, userID string, userA
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 	rt := jwt.NewWithClaims(jwt.SigningMethodES256, claimsRef)
-	signedRef, err := rt.SignedString(j.secret)
+	signedRef, err := rt.SignedString(j.privateSecret)
 	if err != nil {
 		return "", "", err
 	}
@@ -112,7 +123,7 @@ func (j *JWTService) CreateSession(ctx context.Context, userID string, refreshTo
 
 func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string, userAgent string, ip string) (string, string, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.secret, nil
+		return j.publicSecret, nil
 	})
 	if err != nil {
 		return "", "", err
@@ -133,7 +144,7 @@ func (j *JWTService) ValidateAccessToken(ctx context.Context, accessToken string
 
 func (j *JWTService) ValidateRefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
 	token, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.secret, nil
+		return j.publicSecret, nil
 	})
 	if err != nil {
 		return "", "", err

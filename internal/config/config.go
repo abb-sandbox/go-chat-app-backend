@@ -21,6 +21,9 @@ type Config struct {
 	// Redis memory storage
 	REDIS_URL string
 
+	// Domain address of the server
+	DOMAIN string
+
 	// Mailing data
 	MAILING_SERVER_NAME         string
 	ACCOUNT_ACTIVATION_ENDPOINT string
@@ -47,32 +50,35 @@ func GetConfig() Config {
 	}
 	return Config{
 		// --- Application/Framework Settings ---
-		GIN_MODE: GetStringEnv("GIN_MODE", "debug"),
+		GIN_MODE: GetStringEnv("GIN_MODE"),
 
 		// --- Logger Settings ---
 		DEV:     GetBoolEnv("DEV", true),
-		LOG_LVL: GetStringEnv("LOG_LVL", "info"),
+		LOG_LVL: GetStringEnv("LOG_LVL"),
 
 		// --- Postgres DB ---
-		PG_URL: GetStringEnv("PG_URL", ""),
+		PG_URL: GetStringEnv("PG_URL"),
+
+		// --- Server's Domain ---
+		DOMAIN: GetStringEnv("DOMAIN"),
 
 		// --- Mailing data ---
-		MAILING_SERVER_NAME:         GetStringEnv("MAILING_SERVER_NAME", "localhost"),
-		ACCOUNT_ACTIVATION_ENDPOINT: GetStringEnv("ACCOUNT_ACTIVATION_ENDPOINT", "api/v1/auth/activate"),
-		MAILING_API_KEY:             GetStringEnv("MAILING_API_KEY", ""),
+		MAILING_SERVER_NAME:         GetStringEnv("MAILING_SERVER_NAME"),
+		ACCOUNT_ACTIVATION_ENDPOINT: GetStringEnv("ACCOUNT_ACTIVATION_ENDPOINT"),
+		MAILING_API_KEY:             GetStringEnv("MAILING_API_KEY"),
 
 		// --- Redis memory storage ---
-		REDIS_URL: GetStringEnv("REDIS_URL", ""),
+		REDIS_URL: GetStringEnv("REDIS_URL"),
 
 		// --- JWT Service ---
-		JWT_SECRET: GetStringEnv("JWT_SECRET", "super-strong-default-secret-CHANGE-ME!"),
+		JWT_SECRET: GetStringEnv("JWT_SECRET"),
 		JWT_SHORT:  getEnvAsDuration("JWT_SHORT", 15*time.Minute),
 		JWT_LONG:   getEnvAsDuration("JWT_LONG", 30*24*time.Hour),
 
 		// --- MinIO blob storage ---
-		MINIO_ROOT_USER:     GetStringEnv("MINIO_ROOT_USER", "minioadmin"),
-		MINIO_ROOT_PASSWORD: GetStringEnv("MINIO_ROOT_PASSWORD", "minioadminpassword"),
-		MINIO_ENDPOINT:      GetStringEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MINIO_ROOT_USER:     GetStringEnv("MINIO_ROOT_USER"),
+		MINIO_ROOT_PASSWORD: GetStringEnv("MINIO_ROOT_PASSWORD"),
+		MINIO_ENDPOINT:      GetStringEnv("MINIO_ENDPOINT"),
 		MINIO_USE_SSL:       GetBoolEnv("MINIO_USE_SSL", false),
 
 		// For AuthHandler
@@ -82,14 +88,19 @@ func GetConfig() Config {
 
 // --- Helper Functions ---
 
+// CheckEnviromentEmptyness helper function for checking emty Environmental variable
+func CheckEnviromentEmptyness(variable string, variableName string) string {
+	if variable == "" {
+		panic("This variable is empty :" + variableName)
+	}
+	return variable
+}
+
 // GetStringEnv gets environment variable 'key' or returns 'defaultValue'.
 // Note: This is now the primary String getter, using os.Getenv(key) directly.
-func GetStringEnv(key, defaultValue string) string {
+func GetStringEnv(key string) string {
 	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-	return value
+	return CheckEnviromentEmptyness(value, key)
 }
 
 // GetBoolEnv gets environment variable 'key' as a boolean.

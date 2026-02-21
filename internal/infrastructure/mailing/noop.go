@@ -13,11 +13,11 @@ type NoopMailer struct {
 	activationEndpoint string
 }
 
-func NewNoopMailer(apiKey string, mailingServerName string, actEndpointTail string) *NoopMailer {
+func NewNoopMailer(apiKey string, mailingServerName string, actEndpointTail string, serverDomain string) *NoopMailer {
 	return &NoopMailer{
 		apiKey:             apiKey,
 		mailingServerName:  mailingServerName,
-		activationEndpoint: "https://" + mailingServerName + "/" + actEndpointTail + "/"}
+		activationEndpoint: "https://" + serverDomain + "/" + actEndpointTail + "/"}
 }
 
 func (n *NoopMailer) SendActivationLink(ctx context.Context, email, code string) error {

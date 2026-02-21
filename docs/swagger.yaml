@@ -1,4 +1,14 @@
 definitions:
+  handlers.ActiveUsersResponse:
+    properties:
+      active_users:
+        example:
+        - user_1
+        - user_2
+        items:
+          type: string
+        type: array
+    type: object
   handlers.AuthResponse:
     properties:
       access_token:
@@ -9,6 +19,15 @@ definitions:
   handlers.ErrorResponse:
     properties:
       error:
+        type: string
+    type: object
+  handlers.SendMessageRequest:
+    properties:
+      message:
+        example: Hello from the backend!
+        type: string
+      receiver_id:
+        example: user_123
         type: string
     type: object
   handlers.loginRequest:
@@ -221,4 +240,59 @@ paths:
       summary: Register
       tags:
       - Registration
+  /users/active:
+    get:
+      description: Returns an array of all currently connected User IDs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ActiveUsersResponse'
+      summary: List active users
+      tags:
+      - users
+  /users/send:
+    post:
+      consumes:
+      - application/json
+      description: Sends a push message to a specific user if they are connected via
+        WebSocket.
+      parameters:
+      - description: Message Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'sent: true'
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Send a message via WS
+      tags:
+      - users
+  /ws:
+    get:
+      description: Initiates a WebSocket connection. Requires user_id in query.
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+      summary: Upgrade to WebSocket
+      tags:
+      - websocket
 swagger: "2.0"

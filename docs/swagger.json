@@ -277,9 +277,107 @@
                     }
                 }
             }
+        },
+        "/users/active": {
+            "get": {
+                "description": "Returns an array of all currently connected User IDs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List active users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ActiveUsersResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/send": {
+            "post": {
+                "description": "Sends a push message to a specific user if they are connected via WebSocket.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Send a message via WS",
+                "parameters": [
+                    {
+                        "description": "Message Details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "sent: true",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ws": {
+            "get": {
+                "description": "Initiates a WebSocket connection. Requires user_id in query.",
+                "tags": [
+                    "websocket"
+                ],
+                "summary": "Upgrade to WebSocket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "handlers.ActiveUsersResponse": {
+            "type": "object",
+            "properties": {
+                "active_users": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "user_1",
+                        "user_2"
+                    ]
+                }
+            }
+        },
         "handlers.AuthResponse": {
             "type": "object",
             "properties": {
@@ -296,6 +394,19 @@
             "properties": {
                 "error": {
                     "type": "string"
+                }
+            }
+        },
+        "handlers.SendMessageRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Hello from the backend!"
+                },
+                "receiver_id": {
+                    "type": "string",
+                    "example": "user_123"
                 }
             }
         },

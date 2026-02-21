@@ -48,13 +48,16 @@ func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.Han
 	rg.GET("/ws", authMiddleware, h.HandleWebSocket)
 }
 
-// HandleWebSocket godoc !!!!!!!!!!!!!!!!!! DO NOT TRUST OR USE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// @Summary      Upgrade to WebSocket
-// @Description  Initiates a WebSocket connection. Requires user_id in query.
-// @Tags         websocket
-// @Param        user_id query string true "User ID"
-// @Success      101 {string} string "Switching Protocols"
-// @Router       /ws [get]
+// HandleWebSocket godoc !!!!!!!!!!!!!!!!!! D//
+//
+//	@Summary		Upgrade to WebSocket
+//	@Descripti//	@Summary      Upgrade to WebSocket
+//
+//	@Description	Initiates a WebSocket connection. Requires user_id in query.
+//	@Tags			websocket
+//	@Param			user_id	query		string	true	"User ID"
+//	@Success		101		{string}	string	"Switching Protocols"
+//	@Router			/ws [get]
 func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
@@ -81,12 +84,13 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 }
 
 // GetActiveUsers godoc  !!!!!!!!!!!!!!!!!! DO NOT TRUST OR USE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// @Summary      List active users
-// @Description  Returns an array of all currently connected User IDs.
-// @Tags         users
-// @Produce      json
-// @Success      200 {object} ActiveUsersResponse
-// @Router       /users/active [get]
+//
+//	@Summary		List active users
+//	@Description	Returns an array of all currently connected User IDs.
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{object}	ActiveUsersResponse
+//	@Router			/users/active [get]
 func (h *WSHandler) GetActiveUsers(c *gin.Context) {
 	h.Hub.mu.RLock()
 	ids := make([]string, 0, len(h.Hub.Clients))
@@ -99,14 +103,15 @@ func (h *WSHandler) GetActiveUsers(c *gin.Context) {
 }
 
 // TriggerSendMessage godoc !!!!!!!!!!!!!!!!!! DO NOT TRUST OR USE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// @Summary      Send a message via WS
-// @Description  Sends a push message to a specific user if they are connected via WebSocket.
-// @Tags         users
-// @Accept       json
-// @Produce      json
-// @Param        request body SendMessageRequest true "Message Details"
-// @Success      200 {object} map[string]bool "sent: true"
-// @Router       /users/send [post]
+//
+//	@Summary		Send a message via WS
+//	@Description	Sends a push message to a specific user if they are connected via WebSocket.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		SendMessageRequest	true	"Message Details"
+//	@Success		200		{object}	map[string]bool		"sent: true"
+//	@Router			/users/send [post]
 func (h *WSHandler) TriggerSendMessage(c *gin.Context) {
 	var req SendMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

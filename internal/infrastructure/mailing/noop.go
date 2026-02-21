@@ -36,15 +36,5 @@ func (n *NoopMailer) SendActivationLink(ctx context.Context, email, code string)
 }
 
 func (n *NoopMailer) GetTemplate(link string) string {
-	return `
-
-			<div class="container">
-				<h2>Account Activation</h2>
-				<p>Activate your account by clicking the link below.</p>
-				
-				<a href="` + n.actEndpoint + link + `" class="activate-btn" id="linkBtn">
-					Activate Account
-				</a>
-			</div>
-	`
+	return `<div class="container"><h2>Account Activation</h2><p>Activate your account by clicking the link below.</p>	<a href="` + n.actEndpoint + link + `" class="activate-btn" id="linkBtn">Activate Account</a></div>`
 }

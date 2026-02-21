@@ -57,7 +57,9 @@ func main() {
 	// Initialize infra services and application
 	var userRepo usecases.UserRepository = infrapostgres.NewUserRepository(pool)
 	var cache usecases.Cache = infraredis.NewCache(rClient)
-	var mailer usecases.MailingService = inframailing.NewNoopMailer(cfg.MAILING_API_KEY, cfg.HOSTNAME, cfg.ACTIVATION_EP)
+	var mailer usecases.MailingService = inframailing.NewNoopMailer(
+		cfg.MAILING_API_KEY, cfg.MAILING_SERVER_NAME, cfg.ACCOUNT_ACTIVATION_ENDPOINT,
+	)
 
 	var jwtSvc usecases.JWTService = infrajwt.New(cfg)
 

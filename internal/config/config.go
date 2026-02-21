@@ -22,9 +22,9 @@ type Config struct {
 	REDIS_URL string
 
 	// Mailing data
-	HOSTNAME        string
-	ACTIVATION_EP   string
-	MAILING_API_KEY string
+	MAILING_SERVER_NAME         string
+	ACCOUNT_ACTIVATION_ENDPOINT string
+	MAILING_API_KEY             string
 
 	// JWTService for stateful JWT Auth Service
 	JWT_SECRET string
@@ -57,9 +57,9 @@ func GetConfig() Config {
 		PG_URL: GetStringEnv("PG_URL", ""),
 
 		// --- Mailing data ---
-		HOSTNAME:        GetStringEnv("HOSTNAME", "localhost"),
-		ACTIVATION_EP:   GetStringEnv("ACTIVATION_EP", "api/v1/auth/activate"),
-		MAILING_API_KEY: GetStringEnv("MAILING_API_KEY", ""),
+		MAILING_SERVER_NAME:         GetStringEnv("MAILING_SERVER_NAME", "localhost"),
+		ACCOUNT_ACTIVATION_ENDPOINT: GetStringEnv("ACCOUNT_ACTIVATION_ENDPOINT", "api/v1/auth/activate"),
+		MAILING_API_KEY:             GetStringEnv("MAILING_API_KEY", ""),
 
 		// --- Redis memory storage ---
 		REDIS_URL: GetStringEnv("REDIS_URL", ""),

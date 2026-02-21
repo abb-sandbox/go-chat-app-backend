@@ -8,13 +8,16 @@ import (
 
 // NoopMailer implements MailingService with no-op behavior
 type NoopMailer struct {
-	apiKey      string
-	serverName  string
-	actEndpoint string
+	apiKey             string
+	mailingServerName  string
+	activationEndpoint string
 }
 
-func NewNoopMailer(apiKey string, serverName string, actEndpointTail string) *NoopMailer {
-	return &NoopMailer{apiKey: apiKey, serverName: serverName, actEndpoint: "https://" + serverName + "/" + actEndpointTail + "/"}
+func NewNoopMailer(apiKey string, mailingServerName string, actEndpointTail string) *NoopMailer {
+	return &NoopMailer{
+		apiKey:             apiKey,
+		mailingServerName:  mailingServerName,
+		activationEndpoint: "https://" + mailingServerName + "/" + actEndpointTail + "/"}
 }
 
 func (n *NoopMailer) SendActivationLink(ctx context.Context, email, code string) error {
@@ -22,7 +25,7 @@ func (n *NoopMailer) SendActivationLink(ctx context.Context, email, code string)
 	client := resend.NewClient(n.apiKey)
 
 	params := &resend.SendEmailRequest{
-		From:    "noreply@" + n.serverName,
+		From:    "noreply@" + n.mailingServerName,
 		To:      []string{email},
 		Subject: "Activate your chat-app account",
 		Html:    n.GetTemplate(code),
@@ -109,7 +112,7 @@ func (n *NoopMailer) GetTemplate(link string) string {
 				<h2>Account Activation</h2>
 				<p>Activate your account by clicking the link below.</p>
 				
-				<a href="` + n.actEndpoint + link + `" class="activate-btn" id="linkBtn">
+				<a href="` + n.activationEndpoint + link + `" class="activate-btn" id="linkBtn">
 					Activate Account
 				</a>
 			</div>

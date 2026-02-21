@@ -21,6 +21,11 @@ type Config struct {
 	// Redis memory storage
 	REDIS_URL string
 
+	// Mailing data
+	HOSTNAME        string
+	ACTIVATION_EP   string
+	MAILING_API_KEY string
+
 	// JWTService for stateful JWT Auth Service
 	JWT_SECRET string
 	JWT_SHORT  time.Duration // Access token expiry (e.g., 15m)
@@ -50,6 +55,11 @@ func GetConfig() Config {
 
 		// --- Postgres DB ---
 		PG_URL: GetStringEnv("PG_URL", ""),
+
+		// --- Mailing data ---
+		HOSTNAME:        GetStringEnv("HOSTNAME", "localhost"),
+		ACTIVATION_EP:   GetStringEnv("ACTIVATION_EP", "api/v1/auth/activate"),
+		MAILING_API_KEY: GetStringEnv("MAILING_API_KEY", ""),
 
 		// --- Redis memory storage ---
 		REDIS_URL: GetStringEnv("REDIS_URL", ""),

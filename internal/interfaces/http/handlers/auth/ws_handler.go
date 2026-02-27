@@ -1,29 +1,89 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
-	"sync"
+	"time"
 
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
+	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-// Request Models for Swagger
-type SendMessageRequest struct {
-	ReceiverID string `json:"receiver_id" example:"user_123"`
-	Message    string `json:"message" example:"Hello from the backend!"`
+type Envelope struct {
+	Event   string
+	Payload any
 }
 
 type ActiveUsersResponse struct {
 	ActiveUsers []string `json:"active_users" example:"user_1,user_2"`
 }
 
-type WSHandler struct {
-	Hub      *Hub
-	Upgrader websocket.Upgrader
+type Client struct {
+	conn        *websocket.Conn
+	sendChannel chan []byte
+	handler_ctx context.Context
 }
 
-func NewWSHandler() *WSHandler {
+func (c *Client) writePump() {
+	defer c.conn.Close()
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+
+	var err error
+
+write_loop:
+	for {
+		select {
+		case message, ok := <-c.sendChannel: // Other functions send data here
+			// 1. Check if the channel was closed by another part of your code
+			if !ok {
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				break write_loop
+			}
+
+			err = c.conn.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				break write_loop
+			}
+		case <-ticker.C:
+			err = c.conn.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
+				break write_loop
+			}
+		case <-c.handler_ctx.Done():
+			_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			break write_loop
+		}
+	}
+}
+
+const (
+	pingPeriod = 50 * time.Second // Send pings every 50s
+	pongWait   = 60 * time.Second // Expect pongs/messages within 60s
+)
+
+func (c *Client) HandleMessage() error {
+	var msg any
+	// This keeps the connection open and handles Koyeb timeouts
+	err := c.conn.ReadJSON(&msg)
+	if err != nil {
+		// Logger.Info or somethig
+		return err
+	}
+	// TODO : handle the msg !!!!!!!!!!!!
+	return nil
+}
+
+type WSHandler struct {
+	Hub      *Hub
+	Logger   usecases.Logger
+	Upgrader websocket.Upgrader
+	ctx      context.Context
+}
+
+func NewWSHandler(ctx context.Context) *WSHandler {
 	return &WSHandler{
 		Hub: NewHub(),
 		Upgrader: websocket.Upgrader{
@@ -33,6 +93,7 @@ func NewWSHandler() *WSHandler {
 				return true // Adjust for production
 			},
 		},
+		ctx: ctx,
 	}
 }
 
@@ -41,14 +102,13 @@ func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.Han
 	users.Use(authMiddleware)
 	{
 		users.GET("/active", h.GetActiveUsers)
-		users.POST("/send", h.TriggerSendMessage)
 	}
 
 	// WebSocket Upgrade endpoint
 	rg.GET("/ws", authMiddleware, h.HandleWebSocket)
 }
 
-// HandleWebSocket godoc !!!!!!!!!!!!!!!!!! D//
+// HandleWebSocket
 //
 //	@Summary		Upgrade to WebSocket
 //	@Descripti//	@Summary      Upgrade to WebSocket
@@ -59,8 +119,9 @@ func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.Han
 //	@Success		101		{string}	string	"Switching Protocols"
 //	@Router			/ws [get]
 func (h *WSHandler) HandleWebSocket(c *gin.Context) {
-	userID := c.Query("user_id")
-	if userID == "" {
+	userID, ok := utils.GetFromContextAsString(c, userIDKey)
+	if userID == "" || !ok {
+		// Logger.Info or somethig
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
 		return
 	}
@@ -69,21 +130,48 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 	if err != nil {
 		return
 	}
+	// Inside HandleWebSocket after upgrade
+	// setting  pong handler
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(pongWait))
+	})
+	// setting initial deadline
+	err = conn.SetReadDeadline(time.Now().Add(pongWait))
+	if err != nil {
+		return
+	}
 
-	h.Hub.Register(userID, conn)
-	defer h.Hub.Unregister(userID)
+	sendChannel := make(chan []byte, 256)
+
+	client := Client{
+		conn:        conn,
+		handler_ctx: h.ctx,
+		sendChannel: sendChannel,
+	}
+
+	h.Hub.Register(userID, &client)
+	defer h.Hub.Unregister(userID) // closes connection itself and removes from the hub
+
+	// setting up write pipeline
+
+	go client.writePump()
 
 	// Keep-alive loop & Message Listener
+
+	// blocking operation, but if we return from function ,
+	// we will close the underlying tcp connection,
+	// that will return an error in HandleMessage metod of client
+websocket_serving_loop:
 	for {
-		// This keeps the connection open and handles Koyeb timeouts
-		_, _, err := conn.ReadMessage()
+		err := client.HandleMessage()
 		if err != nil {
-			break
+			h.Logger.Info("cannot read message")
+			break websocket_serving_loop
 		}
 	}
 }
 
-// GetActiveUsers godoc  !!!!!!!!!!!!!!!!!! DO NOT TRUST OR USE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// GetActiveUsers
 //
 //	@Summary		List active users
 //	@Description	Returns an array of all currently connected User IDs.
@@ -100,63 +188,4 @@ func (h *WSHandler) GetActiveUsers(c *gin.Context) {
 	h.Hub.mu.RUnlock()
 
 	c.JSON(http.StatusOK, ActiveUsersResponse{ActiveUsers: ids})
-}
-
-// TriggerSendMessage godoc !!!!!!!!!!!!!!!!!! DO NOT TRUST OR USE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//
-//	@Summary		Send a message via WS
-//	@Description	Sends a push message to a specific user if they are connected via WebSocket.
-//	@Tags			users
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		SendMessageRequest	true	"Message Details"
-//	@Success		200		{object}	map[string]bool		"sent: true"
-//	@Router			/users/send [post]
-func (h *WSHandler) TriggerSendMessage(c *gin.Context) {
-	var req SendMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-
-	success := h.Hub.SendToUser(req.ReceiverID, gin.H{
-		"type":    "ms",
-		"content": req.Message,
-	})
-
-	c.JSON(http.StatusOK, gin.H{"sent": success})
-}
-
-// Hub logic (Moved into methods for clarity)
-type Hub struct {
-	Clients map[string]*websocket.Conn
-	mu      sync.RWMutex
-}
-
-func NewHub() *Hub {
-	return &Hub{Clients: make(map[string]*websocket.Conn)}
-}
-
-func (h *Hub) Register(id string, conn *websocket.Conn) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.Clients[id] = conn
-}
-
-func (h *Hub) Unregister(id string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if conn, ok := h.Clients[id]; ok {
-		conn.Close()
-		delete(h.Clients, id)
-	}
-}
-
-func (h *Hub) SendToUser(id string, msg interface{}) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if conn, ok := h.Clients[id]; ok {
-		return conn.WriteJSON(msg) == nil
-	}
-	return false
 }

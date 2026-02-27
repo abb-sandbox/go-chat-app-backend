@@ -34,6 +34,7 @@ import (
 // @in									cookie
 // @name								access_token
 func main() {
+	ctx := context.Background()
 	cfg := config.GetConfig()
 	var lg usecases.Logger = logger.NewZapLogger(cfg.LOG_LVL, cfg.DEV)
 	lg.Info("Postgres dsn", cfg.PG_URL)
@@ -85,21 +86,28 @@ func main() {
 	h := handlers.NewAuthHandler(authService, lg, cfg, jwtSvc)
 	h.RegisterRoutes(api_v1, h.AuthMiddleware())
 
+	// Register websocket routes
+	wh := handlers.NewWSHandler(ctx)
+	wh.RegisterWSRoutes(api_v1, h.AuthMiddleware())
+
 	// Run server with graceful shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000" // Default for local
 	}
 	srv := &http.Server{Addr: "0.0.0.0:" + port, Handler: r}
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			lg.Error(err, "http server stopped")
 		}
 	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		lg.Error(err, "server forced to shutdown")

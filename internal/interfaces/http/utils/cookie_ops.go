@@ -1,4 +1,4 @@
-package cookie_ops
+package utils
 
 import (
 	"time"

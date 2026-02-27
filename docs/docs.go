@@ -306,43 +306,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/send": {
-            "post": {
-                "description": "Sends a push message to a specific user if they are connected via WebSocket.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Send a message via WS",
-                "parameters": [
-                    {
-                        "description": "Message Details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "sent: true",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "boolean"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/ws": {
             "get": {
                 "description": "Initiates a WebSocket connection. Requires user_id in query.",
@@ -402,19 +365,6 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "type": "string"
-                }
-            }
-        },
-        "handlers.SendMessageRequest": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Hello from the backend!"
-                },
-                "receiver_id": {
-                    "type": "string",
-                    "example": "user_123"
                 }
             }
         },

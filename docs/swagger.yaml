@@ -21,15 +21,6 @@ definitions:
       error:
         type: string
     type: object
-  handlers.SendMessageRequest:
-    properties:
-      message:
-        example: Hello from the backend!
-        type: string
-      receiver_id:
-        example: user_123
-        type: string
-    type: object
   handlers.loginRequest:
     properties:
       email:
@@ -251,31 +242,6 @@ paths:
           schema:
             $ref: '#/definitions/handlers.ActiveUsersResponse'
       summary: List active users
-      tags:
-      - users
-  /users/send:
-    post:
-      consumes:
-      - application/json
-      description: Sends a push message to a specific user if they are connected via
-        WebSocket.
-      parameters:
-      - description: Message Details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.SendMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'sent: true'
-          schema:
-            additionalProperties:
-              type: boolean
-            type: object
-      summary: Send a message via WS
       tags:
       - users
   /ws:

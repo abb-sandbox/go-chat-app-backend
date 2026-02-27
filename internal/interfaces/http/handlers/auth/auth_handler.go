@@ -8,6 +8,7 @@ import (
 	"github.com/AzimBB/go-chat-app-backend/internal/config"
 	"github.com/AzimBB/go-chat-app-backend/internal/domain/entities"
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	cookie_ops "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
@@ -254,7 +255,7 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 // @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) logout(c *gin.Context) {
-	sid, ok := GetSessionID(c)
+	sid, ok := utils.GetFromContextAsString(c, sessionIDKey)
 
 	if !ok {
 		cookie_ops.ClearAuthCookies(c)
@@ -284,7 +285,7 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Failure		500				{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
-	user_id, ok := GetUserID(c)
+	user_id, ok := utils.GetFromContextAsString(c, userIDKey)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
@@ -303,28 +304,4 @@ func (h *AuthHandler) me(c *gin.Context) {
 //	@Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}s"
 func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy and strong"})
-}
-
-// middlewares
-
-// --- Gin Helpers (Idiomatic Naming) ---
-
-// GetUserID retrieves the user ID from the Gin context.
-func GetUserID(c *gin.Context) (string, bool) {
-	v, ok := c.Get(string(userIDKey))
-	if !ok {
-		return "", false
-	}
-	id, ok := v.(string)
-	return id, ok
-}
-
-// GetSessionID retrieves the session ID from the Gin context.
-func GetSessionID(c *gin.Context) (string, bool) {
-	v, ok := c.Get(string(sessionIDKey))
-	if !ok {
-		return "", false
-	}
-	sid, ok := v.(string)
-	return sid, ok
 }

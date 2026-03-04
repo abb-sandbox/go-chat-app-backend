@@ -1,4 +1,4 @@
-package handlers
+package auth_handlers
 
 const verification_success = `
 <!DOCTYPE html>

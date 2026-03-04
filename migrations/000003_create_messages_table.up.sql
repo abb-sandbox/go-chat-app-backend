@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.messages (
     chat_id UUID NOT NULL,
     type TEXT NOT NULL,
     content TEXT NOT NULL,
+    status TEXT NOT NULL,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

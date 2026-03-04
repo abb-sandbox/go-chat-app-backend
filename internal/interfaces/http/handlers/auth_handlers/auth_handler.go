@@ -1,4 +1,4 @@
-package handlers
+package auth_handlers
 
 import (
 	"errors"
@@ -46,11 +46,6 @@ type registerRequest struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
-
-const (
-	userIDKey    = "user_id"
-	sessionIDKey = "session_id"
-)
 
 // RegisterRoutes attaches endpoints
 func (h *AuthHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
@@ -161,7 +156,7 @@ func (h *AuthHandler) activate(c *gin.Context) {
 // @Accept			json
 // @Produce		json
 // @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
-// @Success		201		{object}	AuthResponse	"Session was successfully created"
+// @Success		200		{object}	AuthResponse	"Session was successfully created"
 // @Failure		400		{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
 // @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any	other	printable	errors"]"
 // @Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
@@ -255,7 +250,7 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 // @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) logout(c *gin.Context) {
-	sid, ok := utils.GetFromContextAsString(c, sessionIDKey)
+	sid, ok := utils.GetFromContextAsString(c, utils.SessionIDKey)
 
 	if !ok {
 		cookie_ops.ClearAuthCookies(c)
@@ -285,7 +280,7 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Failure		500				{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
-	user_id, ok := utils.GetFromContextAsString(c, userIDKey)
+	user_id, ok := utils.GetFromContextAsString(c, utils.UserIDKey)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
@@ -301,7 +296,7 @@ func (h *AuthHandler) me(c *gin.Context) {
 //	@Tags			devops
 //	@Accept			plain
 //	@Produce		plain
-//	@Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}s"
+//	@Success		200	{object}	map[string]string	"{"message": "healthy	and	strong"}"
 func Health(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy and strong"})
 }

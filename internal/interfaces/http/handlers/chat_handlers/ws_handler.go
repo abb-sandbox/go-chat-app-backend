@@ -1,4 +1,4 @@
-package handlers
+package chat_handlers
 
 import (
 	"context"
@@ -11,69 +11,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Envelope struct {
-	Event   string
-	Payload any
-}
-
 type ActiveUsersResponse struct {
 	ActiveUsers []string `json:"active_users" example:"user_1,user_2"`
-}
-
-type Client struct {
-	conn        *websocket.Conn
-	sendChannel chan []byte
-	handler_ctx context.Context
-}
-
-func (c *Client) writePump() {
-	defer c.conn.Close()
-	ticker := time.NewTicker(pingPeriod)
-	defer ticker.Stop()
-
-	var err error
-
-write_loop:
-	for {
-		select {
-		case message, ok := <-c.sendChannel: // Other functions send data here
-			// 1. Check if the channel was closed by another part of your code
-			if !ok {
-				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				break write_loop
-			}
-
-			err = c.conn.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				break write_loop
-			}
-		case <-ticker.C:
-			err = c.conn.WriteMessage(websocket.PingMessage, nil)
-			if err != nil {
-				break write_loop
-			}
-		case <-c.handler_ctx.Done():
-			_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			break write_loop
-		}
-	}
-}
-
-const (
-	pingPeriod = 50 * time.Second // Send pings every 50s
-	pongWait   = 60 * time.Second // Expect pongs/messages within 60s
-)
-
-func (c *Client) HandleMessage() error {
-	var msg any
-	// This keeps the connection open and handles Koyeb timeouts
-	err := c.conn.ReadJSON(&msg)
-	if err != nil {
-		// Logger.Info or somethig
-		return err
-	}
-	// TODO : handle the msg !!!!!!!!!!!!
-	return nil
 }
 
 type WSHandler struct {
@@ -83,9 +22,9 @@ type WSHandler struct {
 	ctx      context.Context
 }
 
-func NewWSHandler(ctx context.Context) *WSHandler {
+func NewWSHandler(ctx context.Context, wsService any) *WSHandler {
 	return &WSHandler{
-		Hub: NewHub(),
+		Hub: NewHub(ctx, wsService),
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -119,7 +58,7 @@ func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.Han
 //	@Success		101		{string}	string	"Switching Protocols"
 //	@Router			/ws [get]
 func (h *WSHandler) HandleWebSocket(c *gin.Context) {
-	userID, ok := utils.GetFromContextAsString(c, userIDKey)
+	userID, ok := utils.GetFromContextAsString(c, utils.UserIDKey)
 	if userID == "" || !ok {
 		// Logger.Info or somethig
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
@@ -143,32 +82,14 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 
 	sendChannel := make(chan []byte, 256)
 
-	client := Client{
+	client := &Client{
 		conn:        conn,
 		handler_ctx: h.ctx,
 		sendChannel: sendChannel,
 	}
 
-	h.Hub.Register(userID, &client)
-	defer h.Hub.Unregister(userID) // closes connection itself and removes from the hub
-
-	// setting up write pipeline
-
-	go client.writePump()
-
-	// Keep-alive loop & Message Listener
-
-	// blocking operation, but if we return from function ,
-	// we will close the underlying tcp connection,
-	// that will return an error in HandleMessage metod of client
-websocket_serving_loop:
-	for {
-		err := client.HandleMessage()
-		if err != nil {
-			h.Logger.Info("cannot read message")
-			break websocket_serving_loop
-		}
-	}
+	// Starting to serve the client
+	h.Hub.Serve(userID, client)
 }
 
 // GetActiveUsers

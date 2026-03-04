@@ -1,4 +1,4 @@
-package handlers
+package auth_handlers
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	app_errors "github.com/AzimBB/go-chat-app-backend/internal/domain/errors"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	cookie_ops "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -52,8 +53,8 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		} else {
 			// Populate Gin context
-			c.Set(string(userIDKey), userID)
-			c.Set(string(sessionIDKey), sessionID)
+			c.Set(string(utils.UserIDKey), userID)
+			c.Set(string(utils.SessionIDKey), sessionID)
 			c.Next()
 		}
 

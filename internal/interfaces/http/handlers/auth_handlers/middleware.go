@@ -18,14 +18,14 @@ import (
 //	@Description	For checking every auhtorized endpoint of users
 //	@Tags			Auhtorization
 //	@Param			Authorization	header		string			true	"Insert 'Bearer <AccessToken>'"
-//	@Failure		401				{object}	ErrorResponse	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
-//	@Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Failure		401				{object}	utils.ErrorResponse 	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
+//	@Failure		500				{object}	utils.ErrorResponse 	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken := getAccessToken(c)
 
 		if accessToken == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 			return
 		}
 		currentIP := c.ClientIP()
@@ -41,16 +41,16 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		// Checking for errors
 		if errors.Is(err, app_errors.ErrExpiredAccessToken) || errors.Is(err, jwt.ErrTokenExpired) {
 			h.Logger.Info("Access Token is expired", "sessionID", sessionID)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrExpiredAccessToken.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrExpiredAccessToken.Error()})
 		} else if errors.Is(err, app_errors.ErrInvalidJwtToken) {
 			h.Logger.Info("Access Token is invalid", "accessToken", accessToken)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrInvalidJwtToken.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrInvalidJwtToken.Error()})
 		} else if errors.Is(err, app_errors.ErrAccessTokenStolen) {
 			h.Logger.Info("Access Token is stolen", "currentIP", currentIP, "currentUserAgent", currentUserAgent)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrAccessTokenStolen.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrAccessTokenStolen.Error()})
 		} else if err != nil {
 			h.Logger.Info("JWT validation failed", "error", err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, utils.ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		} else {
 			// Populate Gin context
 			c.Set(string(utils.UserIDKey), userID)

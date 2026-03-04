@@ -22,9 +22,9 @@ type WSHandler struct {
 	ctx      context.Context
 }
 
-func NewWSHandler(ctx context.Context, wsService any) *WSHandler {
+func NewWSHandler(ctx context.Context, chatService ChatService) *WSHandler {
 	return &WSHandler{
-		Hub: NewHub(ctx, wsService),
+		Hub: NewHub(ctx, chatService),
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

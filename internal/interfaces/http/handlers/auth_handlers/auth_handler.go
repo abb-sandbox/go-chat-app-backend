@@ -43,10 +43,6 @@ type registerRequest struct {
 	Password string `json:"password" example:"P@ssword123" binding:"required,min=8"`
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 // RegisterRoutes attaches endpoints
 func (h *AuthHandler) RegisterRoutes(r *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	// Register public routes and protected routes so callers can opt-in to register them separately
@@ -87,19 +83,19 @@ func (h *AuthHandler) RegisterProtectedRoutes(r *gin.RouterGroup, authMiddleware
 //	@Produce		json
 //	@Param			payload	body	registerRequest	true	"User registration details"
 //	@Success		201		"Activation link is successfully sent"
-//	@Failure		400		{object}	ErrorResponse	"Request is invalid. Possible "error" values:[USER_ALREADY_EXISTS,"all	others	are	caused	by	the	request's	incorrectness"]"
-//	@Failure		500		{object}	ErrorResponse	"Server failed to process. Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Failure		400		{object}	utils.ErrorResponse	"Request is invalid. Possible "error" values:[USER_ALREADY_EXISTS,"all	others	are	caused	by	the	request's	incorrectness"]"
+//	@Failure		500		{object}	utils.ErrorResponse	"Server failed to process. Possible "error" values : [INTERNAL_SERVER_ERROR]"
 //	@Router			/api/v1/auth/register [post]
 func (h *AuthHandler) register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 
@@ -110,10 +106,10 @@ func (h *AuthHandler) register(c *gin.Context) {
 
 	if err := h.Service.Register(c.Request.Context(), user); err != nil {
 		if errors.Is(err, app_errors.ErrUserAlreadyExists) {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+			c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -129,22 +125,22 @@ func (h *AuthHandler) register(c *gin.Context) {
 //	@Produce		html
 //	@Param			link	path		string			true	"Generated link's end side edge"
 //	@Success		201		{string}	string			"Returns the html page of success"
-//	@Failure		400		{object}	ErrorResponse	"Could not get the link from url path. Possible "error" values : [BAD_REQUEST]"
-//	@Failure		410		{object}	ErrorResponse	"Activation link is expired . Possible "error" values : [ACTIVATION_TIME_EXPIRED]"
-//	@Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Failure		400		{object}	utils.ErrorResponse	"Could not get the link from url path. Possible "error" values : [BAD_REQUEST]"
+//	@Failure		410		{object}	utils.ErrorResponse	"Activation link is expired . Possible "error" values : [ACTIVATION_TIME_EXPIRED]"
+//	@Failure		500		{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 //	@Router			/api/v1/auth/activate/{link} [get]
 func (h *AuthHandler) activate(c *gin.Context) {
 	link, ok := c.Params.Get("link")
 	if link == "" || !ok {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: app_errors.ErrBadRequest.Error()})
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: app_errors.ErrBadRequest.Error()})
 		return
 	}
 
 	if err := h.Service.ActivateUser(c.Request.Context(), link); err != nil {
 		if errors.Is(err, app_errors.ErrActivationTimeExpired) {
-			c.JSON(http.StatusGone, ErrorResponse{Error: err.Error()})
+			c.JSON(http.StatusGone, utils.ErrorResponse{Error: err.Error()})
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.Data(http.StatusCreated, "text/html; charset=utf-8", []byte(verification_success))
@@ -157,9 +153,9 @@ func (h *AuthHandler) activate(c *gin.Context) {
 // @Produce		json
 // @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
 // @Success		200		{object}	AuthResponse	"Session was successfully created"
-// @Failure		400		{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
-// @Failure		401		{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any	other	printable	errors"]"
-// @Failure		500		{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Failure		400		{object}	utils.ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
+// @Failure		401		{object}	utils.ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any	other	printable	errors"]"
+// @Failure		500		{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/login [post]
 func (h *AuthHandler) login(c *gin.Context) {
 	var req loginRequest
@@ -168,7 +164,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Return structured, less verbose error
 		h.Logger.Warn("Login bind failed", "error", err)
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
@@ -180,12 +176,12 @@ func (h *AuthHandler) login(c *gin.Context) {
 	accessToken, refreshToken, err := h.Service.Login(c.Request.Context(), req.Email, req.Password, ua, ip)
 	if errors.Is(err, app_errors.ErrInternalServerError) {
 		h.Logger.Info("Login failed because of server", "email", req.Email, "error", err.Error())
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	} else if err != nil {
 		// Log the error internally but return a generic Unauthorized to prevent enumeration attacks
 		h.Logger.Info("Login failed attempt", "email", req.Email, "error", err.Error())
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrInvalidCreds.Error()})
+		c.JSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrInvalidCreds.Error()})
 		return
 	}
 
@@ -208,13 +204,13 @@ func (h *AuthHandler) login(c *gin.Context) {
 // @Produce		json
 // @Param			Authorization	header		string			true	"Insert 'Bearer <RefreshToken>'"
 // @Success		200				{object}	AuthResponse	"New refreshed token pair returned. So update them both"
-// @Failure		401				{object}	ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
-// @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Failure		401				{object}	utils.ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
+// @Failure		500				{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/refresh [post]
 func (h *AuthHandler) refresh(c *gin.Context) {
 	refreshToken := getRefreshToken(c)
 	if refreshToken == "" {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
+		c.JSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
@@ -223,12 +219,12 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 
 	newAccess, newRefresh, err := h.Service.Refresh(c.Request.Context(), refreshToken, ua, ip)
 	if errors.Is(err, app_errors.ErrInternalServerError) {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: err.Error()})
 		return
 	} else if err != nil && !errors.Is(err, app_errors.ErrInternalServerError) {
 		h.Logger.Info("Token refresh failed", "error", err.Error())
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: err.Error()})
+		c.JSON(http.StatusUnauthorized, utils.ErrorResponse{Error: err.Error()})
 		return
 	}
 	shortTTL := h.cfg.JWT_SHORT
@@ -246,22 +242,22 @@ func (h *AuthHandler) refresh(c *gin.Context) {
 // @Produce		plain
 // @Param			Authorization	header	string	true	"Insert 'Bearer <AccessToken>'"
 // @Success		204				"Logged out successfully"
-// @Failure		401				{object}	ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS]"
-// @Failure		500				{object}	ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+// @Failure		401				{object}	utils.ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS]"
+// @Failure		500				{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/logout [post]
 func (h *AuthHandler) logout(c *gin.Context) {
 	sid, ok := utils.GetFromContextAsString(c, utils.SessionIDKey)
 
 	if !ok {
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
+		c.JSON(http.StatusUnauthorized, utils.ErrorResponse{Error: app_errors.ErrEmptyAuthCreds.Error()})
 		return
 	}
 
 	if err := h.Service.Logout(c.Request.Context(), sid); err != nil {
 		h.Logger.Error(errors.New("Logout service failed to delete session"), "session_id", sid, "error", err.Error())
 		cookie_ops.ClearAuthCookies(c)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 
@@ -277,12 +273,12 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Produce		json
 // @Param			Authorization	header		string				true	"Insert 'Bearer <your_token>'"
 // @Success		200				{object}	map[string]string	""user_id": some_user_id (int)"
-// @Failure		500				{object}	ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
+// @Failure		500				{object}	utils.ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
 	user_id, ok := utils.GetFromContextAsString(c, utils.UserIDKey)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{Error: app_errors.ErrInternalServerError.Error()})
 		return
 	}
 

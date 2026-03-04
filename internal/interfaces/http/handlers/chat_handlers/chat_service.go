@@ -9,6 +9,7 @@ import (
 type CreateChatCommand struct {
 	SenderID   string
 	ReceiverID string
+	Title      string
 }
 
 // ChatService is the main service for handling all the chat ops

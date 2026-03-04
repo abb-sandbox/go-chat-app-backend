@@ -15,14 +15,13 @@ type Envelope struct {
 
 // Hub logic (Moved into methods for clarity)
 type Hub struct {
-	Clients     map[string]*Client
-	mu          sync.RWMutex
-	JobQueue    chan *Envelope
-	ChatService ChatService //// TODO: Need to implement
+	Clients  map[string]*Client
+	mu       sync.RWMutex
+	JobQueue chan *Envelope
 }
 
-func NewHub(ctx context.Context, chatService ChatService) *Hub {
-	return &Hub{Clients: make(map[string]*Client), JobQueue: make(chan *Envelope, 1024), ChatService: chatService}
+func NewHub(ctx context.Context) *Hub {
+	return &Hub{Clients: make(map[string]*Client), JobQueue: make(chan *Envelope, 1024)}
 }
 
 func (h *Hub) Register(id string, client *Client) {

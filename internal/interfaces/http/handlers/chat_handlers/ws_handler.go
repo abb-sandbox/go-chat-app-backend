@@ -1,12 +1,10 @@
 package chat_handlers
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/utils"
-	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -15,32 +13,27 @@ type ActiveUsersResponse struct {
 	ActiveUsers []string `json:"active_users" example:"user_1,user_2"`
 }
 
-type WSHandler struct {
-	Hub      *Hub
-	Logger   usecases.Logger
-	Upgrader websocket.Upgrader
-	ctx      context.Context
-}
-
-func NewWSHandler(ctx context.Context, chatService ChatService) *WSHandler {
-	return &WSHandler{
-		Hub: NewHub(ctx, chatService),
-		Upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				return true // Adjust for production
-			},
+func NewHTTPUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true // Adjust for production
 		},
-		ctx: ctx,
 	}
 }
 
-func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
+func (h *ChatHandler) RegisterChatRoutes(rg *gin.RouterGroup, authMiddleware gin.HandlerFunc) {
 	users := rg.Group("/users")
 	users.Use(authMiddleware)
 	{
 		users.GET("/active", h.GetActiveUsers)
+	}
+
+	chats := rg.Group("chats")
+	chats.Use(authMiddleware)
+	{
+		chats.POST("/create", h.CreateChat)
 	}
 
 	// WebSocket Upgrade endpoint
@@ -54,10 +47,13 @@ func (h *WSHandler) RegisterWSRoutes(rg *gin.RouterGroup, authMiddleware gin.Han
 //
 //	@Description	Initiates a WebSocket connection. Requires user_id in query.
 //	@Tags			websocket
-//	@Param			user_id	query		string	true	"User ID"
-//	@Success		101		{string}	string	"Switching Protocols"
+//
+//	@Param			Authorization	header		string	true	"Insert 'Bearer <AccessToken>'"
+//
+//	@Param			user_id			query		string	true	"User ID"
+//	@Success		101				{string}	string	"Switching Protocols"
 //	@Router			/ws [get]
-func (h *WSHandler) HandleWebSocket(c *gin.Context) {
+func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 	userID, ok := utils.GetFromContextAsString(c, utils.UserIDKey)
 	if userID == "" || !ok {
 		// Logger.Info or somethig
@@ -84,7 +80,7 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 
 	client := &Client{
 		conn:        conn,
-		handler_ctx: h.ctx,
+		handler_ctx: h.Ctx,
 		sendChannel: sendChannel,
 	}
 
@@ -98,9 +94,10 @@ func (h *WSHandler) HandleWebSocket(c *gin.Context) {
 //	@Description	Returns an array of all currently connected User IDs.
 //	@Tags			users
 //	@Produce		json
-//	@Success		200	{object}	ActiveUsersResponse
-//	@Router			/users/active [get]
-func (h *WSHandler) GetActiveUsers(c *gin.Context) {
+//	@Param			Authorization	header		string	true	"Insert 'Bearer <AccessToken>'"
+//	@Success		200				{object}	ActiveUsersResponse
+//	@Router			/api/v1/users/active [get]
+func (h *ChatHandler) GetActiveUsers(c *gin.Context) {
 	h.Hub.mu.RLock()
 	ids := make([]string, 0, len(h.Hub.Clients))
 	for id := range h.Hub.Clients {

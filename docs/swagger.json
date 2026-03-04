@@ -39,19 +39,19 @@
                     "400": {
                         "description": "Could not get the link from url path. Possible \"error\" values : [BAD_REQUEST]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "410": {
                         "description": "Activation link is expired . Possible \"error\" values : [ACTIVATION_TIME_EXPIRED]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -77,33 +77,33 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.loginRequest"
+                            "$ref": "#/definitions/auth_handlers.loginRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "Session was successfully created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.AuthResponse"
+                            "$ref": "#/definitions/auth_handlers.AuthResponse"
                         }
                     },
                     "400": {
                         "description": "Possible \"error\" values: [EMPTY_AUTH_CREDS] ",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Possible \"error\" values: [INVALID_CREDS, \"any\tother\tprintable\terrors\"]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -138,13 +138,13 @@
                     "401": {
                         "description": "Possible \"error\" values: [EMPTY_AUTH_CREDS]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -185,7 +185,7 @@
                     "500": {
                         "description": "Possible \"error\" values: [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -217,19 +217,19 @@
                     "200": {
                         "description": "New refreshed token pair returned. So update them both",
                         "schema": {
-                            "$ref": "#/definitions/handlers.AuthResponse"
+                            "$ref": "#/definitions/auth_handlers.AuthResponse"
                         }
                     },
                     "401": {
                         "description": "Possible \"error\" values: [INVALID_CREDS,\"all\tother\terrors\"]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Server failed to process . Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -255,7 +255,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.registerRequest"
+                            "$ref": "#/definitions/auth_handlers.registerRequest"
                         }
                     }
                 ],
@@ -266,19 +266,72 @@
                     "400": {
                         "description": "Request is invalid. Possible \"error\" values:[USER_ALREADY_EXISTS,\"all\tothers\tare\tcaused\tby\tthe\trequest's\tincorrectness\"]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Server failed to process. Possible \"error\" values : [INTERNAL_SERVER_ERROR]",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/users/active": {
+        "/api/v1/chats/create": {
+            "post": {
+                "description": "Initiates a new chat between two users or returns existing. If a 1-to-1 chat already exists between these users, it returns the existing chat details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Create or get a 1-to-1 chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Insert 'Bearer \u003cAccessToken\u003e'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Create Chat Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat_handlers.CreateChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully created or retrieved chat",
+                        "schema": {
+                            "$ref": "#/definitions/chat_handlers.CreateChatResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or missing fields",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/active": {
             "get": {
                 "description": "Returns an array of all currently connected User IDs.",
                 "produces": [
@@ -288,11 +341,20 @@
                     "users"
                 ],
                 "summary": "List active users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Insert 'Bearer \u003cAccessToken\u003e'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ActiveUsersResponse"
+                            "$ref": "#/definitions/chat_handlers.ActiveUsersResponse"
                         }
                     }
                 }
@@ -306,6 +368,13 @@
                 ],
                 "summary": "Upgrade to WebSocket",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Insert 'Bearer \u003cAccessToken\u003e'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "User ID",
@@ -326,22 +395,7 @@
         }
     },
     "definitions": {
-        "handlers.ActiveUsersResponse": {
-            "type": "object",
-            "properties": {
-                "active_users": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "user_1",
-                        "user_2"
-                    ]
-                }
-            }
-        },
-        "handlers.AuthResponse": {
+        "auth_handlers.AuthResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -352,15 +406,7 @@
                 }
             }
         },
-        "handlers.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.loginRequest": {
+        "auth_handlers.loginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -377,7 +423,7 @@
                 }
             }
         },
-        "handlers.registerRequest": {
+        "auth_handlers.registerRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -392,6 +438,55 @@
                     "type": "string",
                     "minLength": 8,
                     "example": "P@ssword123"
+                }
+            }
+        },
+        "chat_handlers.ActiveUsersResponse": {
+            "type": "object",
+            "properties": {
+                "active_users": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "user_1",
+                        "user_2"
+                    ]
+                }
+            }
+        },
+        "chat_handlers.CreateChatRequest": {
+            "type": "object",
+            "required": [
+                "receiver_id",
+                "sender_id"
+            ],
+            "properties": {
+                "receiver_id": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat_handlers.CreateChatResponse": {
+            "type": "object",
+            "properties": {
+                "chat_id": {
+                    "type": "string"
+                },
+                "chat_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "utils.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
                 }
             }
         }

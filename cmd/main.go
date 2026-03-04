@@ -23,6 +23,8 @@ import (
 	infrapostgres "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/postgres"
 	infraredis "github.com/AzimBB/go-chat-app-backend/internal/infrastructure/redis"
 	handlers "github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/handlers/auth_handlers"
+	"github.com/AzimBB/go-chat-app-backend/internal/interfaces/http/handlers/chat_handlers"
+	"github.com/AzimBB/go-chat-app-backend/internal/usecases/chat_service"
 	usecases "github.com/AzimBB/go-chat-app-backend/internal/usecases/user_auth_service"
 	"github.com/gin-gonic/gin"
 )
@@ -84,16 +86,29 @@ func main() {
 	})
 	// Register auth routes
 	h := handlers.NewAuthHandler(authService, lg, cfg, jwtSvc)
-	h.RegisterRoutes(api_v1, h.AuthMiddleware())
+	authMiddleware := h.AuthMiddleware()
+	h.RegisterRoutes(api_v1, authMiddleware)
+
 	// ---------------
 	// Feature zone
-
+	ch_r := &postgres.ChatRepo{
+		Pool: pool,
+	}
+	ch_s := &chat_service.ChatService{
+		ChatRepo: ch_r,
+	}
 	// New Chat Service
-	// var wsService chat_handlers.ChatService = chat_service.Cha{} ///////// Replace with real
+	var chatHandler = &chat_handlers.ChatHandler{
+		ChatService: ch_s,
+		Hub:         chat_handlers.NewHub(ctx),
+		Logger:      lg,
+		Upgrader:    chat_handlers.NewHTTPUpgrader(),
+		Ctx:         ctx,
+	}
 
-	// Register websocket routes
-	// wh := chat_handlers.NewWSHandler(ctx, wsService)
-	// wh.RegisterWSRoutes(api_v1, h.AuthMiddleware())
+	// Register new chat routes
+	chatHandler.RegisterChatRoutes(api_v1, authMiddleware)
+
 	// ----------------
 
 	// Run server with graceful shutdown

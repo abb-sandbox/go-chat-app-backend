@@ -14,15 +14,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type PostgresUserRepository struct {
+type UserRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
-	return &PostgresUserRepository{pool: pool}
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{pool: pool}
 }
 
-func (p *PostgresUserRepository) CheckEmailExistence(ctx context.Context, email string) error {
+func (p *UserRepository) CheckEmailExistence(ctx context.Context, email string) error {
 	sb := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	q, args, err := sb.
@@ -47,7 +47,7 @@ func (p *PostgresUserRepository) CheckEmailExistence(ctx context.Context, email 
 	return err
 }
 
-func (p *PostgresUserRepository) Create(ctx context.Context, user *entities.User) error {
+func (p *UserRepository) Create(ctx context.Context, user *entities.User) error {
 	sb := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	query, args, err := sb.
@@ -78,7 +78,7 @@ func (p *PostgresUserRepository) Create(ctx context.Context, user *entities.User
 	return nil
 }
 
-func (p *PostgresUserRepository) CheckPassword(ctx context.Context, email, password string) error {
+func (p *UserRepository) CheckPassword(ctx context.Context, email, password string) error {
 	sb := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	q, args, err := sb.
@@ -108,7 +108,7 @@ func (p *PostgresUserRepository) CheckPassword(ctx context.Context, email, passw
 	return nil
 }
 
-func (p *PostgresUserRepository) GetUserIDByEmail(
+func (p *UserRepository) GetUserIDByEmail(
 	ctx context.Context,
 	email string,
 ) (string, error) {

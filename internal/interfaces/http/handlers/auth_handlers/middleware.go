@@ -17,9 +17,9 @@ import (
 //	@Summary		Auth middleware
 //	@Description	For checking every auhtorized endpoint of users
 //	@Tags			Auhtorization
-//	@Param			Authorization	header		string			true	"Insert 'Bearer <AccessToken>'"
-//	@Failure		401				{object}	utils.ErrorResponse 	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
-//	@Failure		500				{object}	utils.ErrorResponse 	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
+//	@Param			Authorization	header		string				true	"Insert 'Bearer <AccessToken>'"
+//	@Failure		401				{object}	utils.ErrorResponse	"Possible "error" values : [EMPTY_AUTH_CREDS,EXPIRED_ACCESS_TOKEN,INVALID_JWT_TOKEN,ACCESS_TOKEN_STOLEN]"
+//	@Failure		500				{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken := getAccessToken(c)

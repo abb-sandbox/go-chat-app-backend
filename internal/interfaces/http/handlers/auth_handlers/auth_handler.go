@@ -123,8 +123,8 @@ func (h *AuthHandler) register(c *gin.Context) {
 //	@Tags			Registration
 //	@Accept			plain
 //	@Produce		html
-//	@Param			link	path		string			true	"Generated link's end side edge"
-//	@Success		201		{string}	string			"Returns the html page of success"
+//	@Param			link	path		string				true	"Generated link's end side edge"
+//	@Success		201		{string}	string				"Returns the html page of success"
 //	@Failure		400		{object}	utils.ErrorResponse	"Could not get the link from url path. Possible "error" values : [BAD_REQUEST]"
 //	@Failure		410		{object}	utils.ErrorResponse	"Activation link is expired . Possible "error" values : [ACTIVATION_TIME_EXPIRED]"
 //	@Failure		500		{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
@@ -151,8 +151,8 @@ func (h *AuthHandler) activate(c *gin.Context) {
 // @Tags			Authentication
 // @Accept			json
 // @Produce		json
-// @Param			payload	body		loginRequest	true	"Provide your creds for creation new session on certain device"
-// @Success		200		{object}	AuthResponse	"Session was successfully created"
+// @Param			payload	body		loginRequest		true	"Provide your creds for creation new session on certain device"
+// @Success		200		{object}	AuthResponse		"Session was successfully created"
 // @Failure		400		{object}	utils.ErrorResponse	"Possible "error" values: [EMPTY_AUTH_CREDS] "
 // @Failure		401		{object}	utils.ErrorResponse	"Possible "error" values: [INVALID_CREDS, "any	other	printable	errors"]"
 // @Failure		500		{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
@@ -202,8 +202,8 @@ func (h *AuthHandler) login(c *gin.Context) {
 // @Tags			Authorization
 // @Accept			plain
 // @Produce		json
-// @Param			Authorization	header		string			true	"Insert 'Bearer <RefreshToken>'"
-// @Success		200				{object}	AuthResponse	"New refreshed token pair returned. So update them both"
+// @Param			Authorization	header		string				true	"Insert 'Bearer <RefreshToken>'"
+// @Success		200				{object}	AuthResponse		"New refreshed token pair returned. So update them both"
 // @Failure		401				{object}	utils.ErrorResponse	"Possible "error" values: [INVALID_CREDS,"all	other	errors"]"
 // @Failure		500				{object}	utils.ErrorResponse	"Server failed to process . Possible "error" values : [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/refresh [post]
@@ -273,7 +273,7 @@ func (h *AuthHandler) logout(c *gin.Context) {
 // @Produce		json
 // @Param			Authorization	header		string				true	"Insert 'Bearer <your_token>'"
 // @Success		200				{object}	map[string]string	""user_id": some_user_id (int)"
-// @Failure		500				{object}	utils.ErrorResponse		"Possible "error" values: [INTERNAL_SERVER_ERROR]"
+// @Failure		500				{object}	utils.ErrorResponse	"Possible "error" values: [INTERNAL_SERVER_ERROR]"
 // @Router			/api/v1/auth/me [get]
 func (h *AuthHandler) me(c *gin.Context) {
 	user_id, ok := utils.GetFromContextAsString(c, utils.UserIDKey)
